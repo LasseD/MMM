@@ -1,5 +1,4 @@
 import lejos.nxt.*;
-import lejos.nxt.addon.*;;
 
 /**
  * MMM Module Plane Flyers from the video game Theme Park.
@@ -7,27 +6,27 @@ import lejos.nxt.addon.*;;
  * @author Lasse Deleuran
  */
 public class PlaneFlyers {
-	private static final NXTRegulatedMotor track = new NXTRegulatedMotor(MotorPort.A);
-	private static final NXTRegulatedMotor lifter = new NXTRegulatedMotor(MotorPort.B);
-	private static final NXTRegulatedMotor turner = new NXTRegulatedMotor(MotorPort.C);
-	private static final NXTMotor turnResetter = new NXTMotor(MotorPort.C);
+	private static final NXTMotor track = new NXTMotor(MotorPort.C);
+	private static final NXTRegulatedMotor lifter = new NXTRegulatedMotor(MotorPort.A);
+	private static final NXTRegulatedMotor turner = new NXTRegulatedMotor(MotorPort.B);
+	private static final NXTMotor turnResetter = new NXTMotor(MotorPort.B);
 	
-	private static final LightSensor light = new LightSensor(SensorPort.S4);
-	private static final TouchSensor touch = new TouchSensor(SensorPort.S1);
+	private static final LightSensor light = new LightSensor(SensorPort.S3);
+	private static final TouchSensor touch = new TouchSensor(SensorPort.S4);
 
 	public static final int CAPACITY = 4;
 
 	// Speed and acceleration:
 	public static final int ACCELERATION = 300;	
-	public static final int SPEED_TRACK_SLOW = 200;
-	public static final int SPEED_TRACK_FAST = 400;
 	public static final int SPEED_TURN_SLOW = 150;
 	public static final int SPEED_TURN_FAST = 400;
 	public static final int SPEED_LIFT = 230;
-	
+	public static final int POWER_TRACK_SLOW = 25;
+	public static final int POWER_TRACK_FAST = 65;
+
 	// Movements:
-	public static final int LIFT_TOP = -400;
 	public static final int LIFT_CLEAR = -300;
+	public static final int LIFT_TOP = -250;
 	
 	public static final int TURN_DOOR = -120;
 	
@@ -62,12 +61,12 @@ public class PlaneFlyers {
 	 */
 	private static boolean pickup() {
 		turner.setSpeed(SPEED_TURN_SLOW); // Slow for pickups.
-		track.forward();
+		in();
 
 		// Wait for guest. If no guest arrives, then return false:
 		if(!seesMinifig(20*1000)) {
-			track.setSpeed(SPEED_TRACK_SLOW);
-			track.backward();
+			track.setPower(POWER_TRACK_SLOW);
+			out();
 			
 			if(guests > 0) { // Only close airplane if there are guests:
 				liftToDoor();
@@ -77,20 +76,20 @@ public class PlaneFlyers {
 		}
 		
 		// Get passenger into plane:
-		track.setSpeed(SPEED_TRACK_FAST);
-		track.rotate(1200);
-		track.setSpeed(SPEED_TRACK_SLOW);
+		track.setPower(POWER_TRACK_FAST);
+		sleep(1800);
+		track.setPower(POWER_TRACK_SLOW);
 		guests++;
 		
 		// Close the door:
+		track.flt();
 		liftToDoor();		
-		track.backward();
+		out();
 		closeDoor();
 
 		if(guests < CAPACITY) {
 			// Position next plane:
 			openDoor();
-			track.forward();
 			downAndReset();
 			return true;
 		}
@@ -106,9 +105,9 @@ public class PlaneFlyers {
 		
 		downAndReset();
 		
-		track.setSpeed(SPEED_TRACK_FAST);
-		sleep(1000); // clear the plane
-		track.setSpeed(SPEED_TRACK_SLOW);
+		track.setPower(POWER_TRACK_FAST);
+		sleep(800); // clear the plane
+		track.setPower(POWER_TRACK_SLOW);
 		guests--;
 
 		if(guests > 0) {
@@ -131,8 +130,18 @@ public class PlaneFlyers {
 		
 		LCD.clear();
 		LCD.drawString("BLOCK", 0, 0, true);
-		while(!Button.ENTER.isDown()) {
-			LCD.drawInt(light.getLightValue(), 3, 1);
+		while(true) {
+			if(Button.ENTER.isDown()) {
+				LCD.drawInt(light.getLightValue(), 3, 1);
+				break;
+			}
+			else if(Button.RIGHT.isDown()) {
+				turner.rotate(-10);
+			}
+			else if(Button.LEFT.isDown()) {
+				turner.rotate(10);
+			}
+			sleep(200);
 		}
 		sensorValFig = light.getLightValue();
 
@@ -158,9 +167,8 @@ public class PlaneFlyers {
 		turner.flt();
 		
 		// Set track:
-		track.setAcceleration(ACCELERATION);
-		track.setSpeed(SPEED_TRACK_SLOW);
-		track.forward();
+		track.setPower(POWER_TRACK_SLOW);
+		in();
 	}
 	
 	private static void turn(int planeAngle) {
@@ -181,8 +189,7 @@ public class PlaneFlyers {
 		while(touch.isPressed())
 			;
 		lifter.stop();
-		sleep(50);
-		lifter.rotate(-360);
+		lifter.rotate(-530);
 	}
 	
 	private static void closeDoor() {
@@ -193,9 +200,9 @@ public class PlaneFlyers {
 	}
 	
 	private static void openDoor() {
-		turn(60);
+		turn(70);
 		lifter.rotate(-LIFT_CLEAR+15);
-		turn(30);		
+		turn(20);
 	}
 	
 	/*¨
@@ -241,6 +248,44 @@ public class PlaneFlyers {
 		}
 		light.setFloodlight(false);
 		return false;
+	}
+
+	private static boolean forward = true;
+	private static void reverseTrack() {
+		if(forward) {
+			track.backward();
+			forward = false;
+		}
+		else {
+			track.forward();
+			forward = true;
+		}
+	}
+	
+	public static void ensureTrackRuns() {
+		final int WAIT_FOR_TEST = 300;
+
+		while(true) {
+			track.resetTachoCount();
+			sleep(WAIT_FOR_TEST);
+			if(Math.abs(track.getTachoCount()) > 30) { // stalled?
+				return;
+			}
+			reverseTrack();
+			sleep(WAIT_FOR_TEST);
+			reverseTrack();
+			sleep(WAIT_FOR_TEST);
+		}
+	}
+
+	public static void in() {
+		track.forward();
+		ensureTrackRuns();
+	}
+	
+	public static void out() {
+		track.backward();
+		ensureTrackRuns();
 	}
 	
 	private static void sleep(int time) {
