@@ -1,52 +1,63 @@
 import lejos.nxt.*;
 
 /**
- * MMM Module Plane Flyers from the video game Theme Park.
+ * MMM Module Duck Shoot from the video game Theme Park.
  * Building instructions for MMM modules are on brickhub.org
  * @author Lasse Deleuran
  */
 public class DuckShoot {
 	private static final NXTRegulatedMotor track = new NXTRegulatedMotor(MotorPort.A);
-	private static final NXTRegulatedMotor gun = new NXTRegulatedMotor(MotorPort.C);	
-	private static final NXTMotor gunResetter = new NXTMotor(MotorPort.C);
+	private static final NXTMotor gun = new NXTMotor(MotorPort.C);	
+	private static final NXTMotor extra = new NXTMotor(MotorPort.B);
 	private static final SoundSensor sound = new SoundSensor(SensorPort.S1);
 
 	public static final int SPEED_TRACK = 100;
-	public static final int GUN_TURN = 14;
+	public static final int GUN_TURN = 12;
+	public static final int SHOTS_BEFORE_RECALIBRATION = 10;
 	
 	public static void main(String[] args) {
+		extra.setPower(100);
+		extra.forward(); // In case we want to run another module, or light from this module.
+		
 		track.setSpeed(SPEED_TRACK);
 		track.forward();
-
-		resetGun();
-		int maxSound = 0;
+		
+		resetGun(); // Ensure gun is loaded
+		int maxSound = 80; // Ensure value goes up in loud environments.
+		int shots = 0;
 		
 		while(true) {
 			int val = sound.readValue();
 			if(val > maxSound) {
 				maxSound = val;
 				LCD.clearDisplay();
-				LCD.drawInt(val, 3, 2);
+				LCD.drawInt(val, 3, 2); // Draw max value
 			}
-			LCD.drawInt(val, 3, 1);
-			if(sound.readValue() > 70) {
+			
+			LCD.drawInt(val, 2, 3, 1); // Draw current value
+			LCD.drawInt(shots, 3, 0);
+			if(sound.readValue() > maxSound*85/100) {
+				shots++;
 				shoot();
 			}
 		}
 	}
 	
 	private static void shoot() {
-		gun.rotate(GUN_TURN);
-		gun.rotate(-GUN_TURN);
+		gun.forward();
+		while(gun.getTachoCount() < GUN_TURN)
+			;
+		gun.flt();
+		resetGun();
 	}
 	
 	private static void resetGun() {
-		gun.suspendRegulation();
-		gunResetter.setPower(10);
-		gunResetter.backward();
-		sleep(500);
-		gunResetter.flt();
-		gun.setSpeed(700);
+		gun.setPower(10);
+		gun.backward();
+		sleep(300);
+		gun.flt();
+		gun.setPower(100);
+		gun.resetTachoCount();
 	}
 	
 	private static void sleep(int time) {
