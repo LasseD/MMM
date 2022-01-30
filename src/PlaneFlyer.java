@@ -1,3 +1,4 @@
+import mmm.Time;
 import lejos.nxt.*;
 
 /**
@@ -5,7 +6,7 @@ import lejos.nxt.*;
  * Building instructions for MMM modules are on brickhub.org
  * @author Lasse Deleuran
  */
-public class PlaneFlyers {
+public class PlaneFlyer {
 	private static final NXTMotor track = new NXTMotor(MotorPort.C);
 	private static final NXTRegulatedMotor lifter = new NXTRegulatedMotor(MotorPort.A);
 	private static final NXTRegulatedMotor turner = new NXTRegulatedMotor(MotorPort.B);
@@ -22,7 +23,7 @@ public class PlaneFlyers {
 	public static final int SPEED_TURN_FAST = 400;
 	public static final int SPEED_LIFT = 230;
 	public static final int POWER_TRACK_SLOW = 25;
-	public static final int POWER_TRACK_FAST = 65;
+	public static final int POWER_TRACK_FAST = 50;
 
 	// Movements:
 	public static final int LIFT_CLEAR = -300;
@@ -39,6 +40,9 @@ public class PlaneFlyers {
 		while(true) {
 			for(int i = 0; i < 4 && pickup(); i++)
 				;
+			if(Button.ENTER.isDown()) {
+				return;
+			}
 			if(guests > 0) {
 				lifter.rotate(LIFT_TOP);
 				turner.setSpeed(SPEED_TURN_FAST);
@@ -49,7 +53,7 @@ public class PlaneFlyers {
 					leave();
 				}
 			}
-			sleep(15*1000); // Wait 15 seconds until next round
+			Time.sleep(15*1000); // Wait 15 seconds until next round
 		}
 	}
 	
@@ -65,6 +69,9 @@ public class PlaneFlyers {
 
 		// Wait for guest. If no guest arrives, then return false:
 		if(!seesMinifig(20*1000)) {
+			if(Button.ENTER.isDown()) {
+				return false; // Shut down.
+			}
 			track.setPower(POWER_TRACK_SLOW);
 			out();
 			
@@ -77,7 +84,7 @@ public class PlaneFlyers {
 		
 		// Get passenger into plane:
 		track.setPower(POWER_TRACK_FAST);
-		sleep(1800);
+		Time.sleep(1000);
 		track.setPower(POWER_TRACK_SLOW);
 		guests++;
 		
@@ -106,7 +113,7 @@ public class PlaneFlyers {
 		downAndReset();
 		
 		track.setPower(POWER_TRACK_FAST);
-		sleep(800); // clear the plane
+		Time.sleep(900); // clear the plane
 		track.setPower(POWER_TRACK_SLOW);
 		guests--;
 
@@ -118,18 +125,16 @@ public class PlaneFlyers {
 	
 	private static void calibrate() {
 		light.setFloodlight(true);
-		sleep(200);
+		Time.sleep(200);
 		sensorValFree = light.getLightValue();
 
 		for(int i = 0; i < 5; i++) {
 			light.setFloodlight(false);
-			sleep(100);
+			Time.sleep(100);
 			light.setFloodlight(true);
-			sleep(100);
+			Time.sleep(100);
 		}
 		
-		LCD.clear();
-		LCD.drawString("BLOCK", 0, 0, true);
 		while(true) {
 			if(Button.ENTER.isDown()) {
 				LCD.drawInt(light.getLightValue(), 3, 1);
@@ -141,7 +146,7 @@ public class PlaneFlyers {
 			else if(Button.LEFT.isDown()) {
 				turner.rotate(10);
 			}
-			sleep(200);
+			Time.sleep(200);
 		}
 		sensorValFig = light.getLightValue();
 
@@ -189,7 +194,7 @@ public class PlaneFlyers {
 		while(touch.isPressed())
 			;
 		lifter.stop();
-		lifter.rotate(-530);
+		lifter.rotate(-525);
 	}
 	
 	private static void closeDoor() {
@@ -213,7 +218,7 @@ public class PlaneFlyers {
 		while(!touch.isPressed())
 			;
 		lifter.stop();
-		lifter.rotate(120);
+		lifter.rotate(125);
 		
 		// Reset turner:
 		turner.flt();
@@ -221,9 +226,9 @@ public class PlaneFlyers {
 		
 		turnResetter.setPower(15);
 		turnResetter.forward();
-		sleep(150);
+		Time.sleep(150);
 		turnResetter.backward();
-		sleep(150);
+		Time.sleep(150);
 		turnResetter.flt();
 		
 		// Restore turner:
@@ -233,8 +238,8 @@ public class PlaneFlyers {
 	
 	public static boolean seesMinifig(int timeoutMS) {	
 		light.setFloodlight(true);
-		while(timeoutMS > 0) { 
-			sleep(50);
+		while(timeoutMS > 0 && !Button.ENTER.isDown()) { 
+			Time.sleep(50);
 			timeoutMS -= 50;
 			int v = light.getLightValue();
 			LCD.drawInt(v, 3, 1);
@@ -250,47 +255,11 @@ public class PlaneFlyers {
 		return false;
 	}
 
-	private static boolean forward = true;
-	private static void reverseTrack() {
-		if(forward) {
-			track.backward();
-			forward = false;
-		}
-		else {
-			track.forward();
-			forward = true;
-		}
-	}
-	
-	public static void ensureTrackRuns() {
-		final int WAIT_FOR_TEST = 300;
-
-		while(true) {
-			track.resetTachoCount();
-			sleep(WAIT_FOR_TEST);
-			if(Math.abs(track.getTachoCount()) > 30) { // stalled?
-				return;
-			}
-			reverseTrack();
-			sleep(WAIT_FOR_TEST);
-			reverseTrack();
-			sleep(WAIT_FOR_TEST);
-		}
-	}
-
 	public static void in() {
 		track.forward();
-		ensureTrackRuns();
 	}
 	
 	public static void out() {
 		track.backward();
-		ensureTrackRuns();
-	}
-	
-	private static void sleep(int time) {
-		int start = (int)System.currentTimeMillis();
-		while(start+time > (int)System.currentTimeMillis())
-			;
 	}
 }
