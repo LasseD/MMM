@@ -10,6 +10,7 @@ public class CoconutShy {
 	private static final NXTRegulatedMotor track = new NXTRegulatedMotor(MotorPort.A);
 	private static final NXTMotor gun = new NXTMotor(MotorPort.B);	
 	private static final UltrasonicSensor distance = new UltrasonicSensor(SensorPort.S1);
+	private static final AdjustablePowerOutput aux = new AdjustablePowerOutput(MotorPort.C, 3);
 
 	public static final int SPEED_TRACK = 100;
 	public static final int GUN_TURN = 8;
@@ -17,7 +18,7 @@ public class CoconutShy {
 	public static final int SHOTS_BEFORE_RECALIBRATION = 10;
 	
 	public static void main(String[] args) {
-		new AdjustablePowerOutput(MotorPort.C).start(); // Extra power output.
+		aux.start(); // Extra power output.
 		
 		track.setSpeed(SPEED_TRACK);
 		track.forward();
@@ -26,7 +27,7 @@ public class CoconutShy {
 		int lastDistance = distance.getDistance();
 		int shots = 0;
 		
-		while(true) {
+		while(!Button.ENTER.isDown()) {
 			Time.sleep(250);
 
 			int val = distance.getDistance();
@@ -46,6 +47,7 @@ public class CoconutShy {
 				shots = 0;
 			}
 		}
+		aux.stop();
 	}
 	
 	private static void reset() {

@@ -13,7 +13,8 @@ public class AdjustablePowerOutput extends Thread {
 	private int lineNumber;
 	private File file;
 	private int speed; // -100 to 100
-	private BasicMotor motor;	
+	private BasicMotor motor;
+	private boolean stopped;
 
 	public AdjustablePowerOutput(MotorPort motorPort) {
 		this(motorPort, 0);
@@ -23,6 +24,7 @@ public class AdjustablePowerOutput extends Thread {
 		file = new File(FILE_NAME);
 		motor = new NXTMotor(motorPort);
 		this.lineNumber = lineNumber;
+		stopped = false;
 	}
 	
 	// returns first when button is released.
@@ -67,7 +69,7 @@ public class AdjustablePowerOutput extends Thread {
 			}
 			
 			// Run forever:
-			while(true) {
+			while(!stopped) {
 				LCD.drawInt(speed, 4, 2, lineNumber);
 				Time.sleep(100);			
 				handleButtons();
@@ -78,6 +80,10 @@ public class AdjustablePowerOutput extends Thread {
 			LCD.drawString("IOException", 0, 1);
 			LCD.drawString(e.getMessage(), 0, 2);
 		}
+	}
+	
+	public void stop() {
+		stopped = true;
 	}
 	
 	private void writeFile() throws IOException {
