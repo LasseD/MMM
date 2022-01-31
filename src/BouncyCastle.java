@@ -1,8 +1,9 @@
+import mmm.Time;
 import lejos.nxt.*;
 import lejos.nxt.addon.*;;
 
 /**
- * MMM Module Bouncy Castle from the video game Theme Park.
+ * MMM Module "Bouncy Castle" which is a ride in the video game Theme Park.
  * Building instructions for MMM modules are on brickhub.org
  * @author Lasse Deleuran
  */
@@ -21,15 +22,15 @@ public class BouncyCastle {
 		init();
 		resetJump();
 		
-		while(true) {
-			motorTrack.setPower(50 + (int)(12*Math.sin((int)System.currentTimeMillis()/900)));
+		while(!Button.ENTER.isDown()) {
+			motorTrack.setPower(55 + (int)(10*Math.sin((int)System.currentTimeMillis()/900)));
 			if(seesMinifig(210)) {
 				if(invite()) {
 					sensorTrack.setFloodlight(false);
 
 					// Adjust matt a bit to clear the inner wall:
 					motorMatt.forward();
-					sleep(50);
+					Time.sleep(50);
 					motorMatt.flt();
 
 					bounce();
@@ -37,7 +38,7 @@ public class BouncyCastle {
 					bounce();
 					bounce();
 					leave();
-					sleep(1000); // Cool down
+					Time.sleep(1000); // Cool down
 					sensorTrack.setFloodlight(true);
 				}
 			}
@@ -46,16 +47,18 @@ public class BouncyCastle {
 
 	public static void init() {
 		// Calibrate:
-		LCD.drawString("FREE->LEFT", 0, 0, true);
 		sensorTrack.setFloodlight(true);
-		while(!Button.LEFT.isDown()) {
-			LCD.drawInt(sensorTrack.getLightValue(), 3, 1);
-		}
+		Time.sleep(200);
 		valFree = sensorTrack.getLightValue();
 
-		LCD.clear();
-		LCD.drawString("BLOCK->RIGHT", 0, 0, true);
-		while(!Button.RIGHT.isDown()) {
+		for(int i = 0; i < 5; i++) {
+			sensorTrack.setFloodlight(false);
+			Time.sleep(100);
+			sensorTrack.setFloodlight(true);
+			Time.sleep(100);
+		}
+		
+		while(!Button.ENTER.isDown()) {
 			LCD.drawInt(sensorTrack.getLightValue(), 3, 1);
 		}
 		valFig = sensorTrack.getLightValue();
@@ -63,7 +66,6 @@ public class BouncyCastle {
 		LCD.clear();
 		LCD.drawInt(valFree, 3, 2);
 		LCD.drawInt(valFig, 3, 3);
-		LCD.drawString("RUNNING", 0, 0, false);
 
 		motorJump.flt();
 		motorJump.setSpeed(110);
@@ -75,7 +77,7 @@ public class BouncyCastle {
 	
 	public static boolean seesMinifig(int timeout) {	
 		while(timeout > 0) { 
-			sleep(50);
+			Time.sleep(50);
 			timeout -= 50;
 			int v = sensorTrack.getLightValue();
 			LCD.drawInt(v, 3, 1);
@@ -104,7 +106,7 @@ public class BouncyCastle {
 		motorTrack.backward();
 		
 		// Clear the sensor. If another minifig makes it, then that is alright too:
-		sleep(1000);
+		Time.sleep(1000);
 
 		if(seesMinifig(700)) { // Magic number to keep matt still while walking to it
 			return invite();
@@ -134,32 +136,26 @@ public class BouncyCastle {
 		
 		motorJumpPowerRegulated.setPower(10);
 		motorJumpPowerRegulated.backward();
-		sleep(1000);
+		Time.sleep(1000);
 		motorJumpPowerRegulated.flt();
 		motorJump.resetTachoCount();		
 	}
 
 	public static void leave() {
 		motorJump.rotateTo(37);
-		motorTrack.setPower(85);
+		motorTrack.setPower(70);
 		motorTrack.forward();
 
 		motorMatt.setPower(70);
 		motorMatt.forward();
 
 		Sound.beepSequence();
-		sleep(6000); // vacate matt
+		Time.sleep(6500); // vacate castle
 		
 		motorMatt.flt();
 		resetJump();
 		
 		motorTrack.setPower(50);
 		guests = 0;
-	}
-	
-	private static void sleep(int time) {
-		int start = (int)System.currentTimeMillis();
-		while(start+time > (int)System.currentTimeMillis())
-			;
 	}
 }
