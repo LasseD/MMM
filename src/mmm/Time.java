@@ -2,8 +2,11 @@ package mmm;
 
 public class Time {
 	public static void sleep(int time) {
-		int start = (int)System.currentTimeMillis();
-		while(start+time > (int)System.currentTimeMillis())
-			;
+		try {
+			Thread.sleep(time);
+		}
+		catch(InterruptedException e) {
+			// Can't happen on NXT.
+		}
 	}
 }

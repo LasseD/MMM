@@ -11,7 +11,7 @@ public class BigWheel {
 	private static final NXTMotor lifter = new NXTMotor(MotorPort.B);
 	private static final NXTRegulatedMotor turner = new NXTRegulatedMotor(MotorPort.C);
 	
-	private static final FigureSensor figureSensor = new FigureSensor(SensorPort.S1);
+	private static final FigureSensor figureSensor = new FigureSensor(SensorPort.S4);
 
 	public static final int CAPACITY = 6;
 
@@ -73,14 +73,21 @@ public class BigWheel {
 		}
 		
 		track.stop();
-		track.rotate(580);
+		track.rotate(470);
 		lifterUp();
-		track.rotate(220);
+		track.rotate(370);
 		track.in();
 		lifterDown();
 		track.out();
 		track.boost();
-		Time.sleep(2500); // If someone else is at the wheel, then give them time to leave before it turns.
+		while(figureSensor.seesMinifig(5500)) {
+			// Try to get minifig out if stuck:
+			Time.sleep(4000);
+			track.in();
+			Time.sleep(850);
+			track.out();			
+			Time.sleep(4000);
+		}
 		track.resetSpeed();
 
 		guests++;
@@ -94,6 +101,10 @@ public class BigWheel {
 		lifterDown();
 		track.boost();
 		Time.sleep(4500);
+		track.in();
+		Time.sleep(750);
+		track.out();
+		Time.sleep(2500);
 		track.resetSpeed();
 	}
 	
@@ -112,13 +123,14 @@ public class BigWheel {
 	}
 	
 	private static void lifterUp() {
-		lifter.setPower(25);
+		lifter.setPower(26);
 		lifter.backward();
+		int base = lifter.getTachoCount();
 		while(true) {
 			int from = lifter.getTachoCount();
 			Time.sleep(100);
 			int to = lifter.getTachoCount();
-			if(from - to < 2) {
+			if(base-to > 60 && from - to < 1) {
 				break;
 			}
 		}
