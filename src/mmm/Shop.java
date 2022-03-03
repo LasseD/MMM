@@ -4,7 +4,8 @@ import lejos.nxt.*;
 import java.io.File;
 
 public class Shop extends Thread {
-	public static final String BELL_FILE = "bell.wav";
+	public static final String BELL_FILE = "bell.wav"; // Upload to NXT: "nxjupload.bat -u sounds/bell.wav"
+
 	
 	public static boolean shouldStartShop(ADSensorPort port) {
 		LightSensor sensor = new LightSensor(port);
@@ -23,6 +24,8 @@ public class Shop extends Thread {
 	public void run() {
 		File file = new File(BELL_FILE);
 		
+		track.out();
+		Time.sleep(8000);
 		while(true) {
 			track.in();
 			if(sensor.seesMinifig(10000)) {

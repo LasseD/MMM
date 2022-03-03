@@ -5,10 +5,10 @@ import lejos.nxt.LightSensor;
 import lejos.nxt.SensorPort;
 
 public class FigureSensor {
-	public static final int INTERVAL_LENGTH_MS = 15 * 1000;
-	public static final int NUMBER_OF_INTERVALS = 20;
+	public static final int INTERVAL_LENGTH_MS = 4 * 1000;
+	public static final int NUMBER_OF_INTERVALS = 36;
 	public static final int SENSOR_POLLING_SLEEP_MS = 50;
-	public static final int SLEEP_POLLING_SLEEP_MS = 100;
+	public static final int SLEEP_POLLING_SLEEP_MS = 150;
 	
 	private LightSensor light;
 	private Interval[] intervals;
@@ -64,20 +64,26 @@ public class FigureSensor {
 			int v = light.getLightValue();
 			LCD.drawInt(v, 3, 1);
 
-			int largest = -1;
+			int max = -1, min = 100;
+			int validIntervals = 0;
+			boolean largerThanAnInterval = false;
 			for(int i = 0; i < NUMBER_OF_INTERVALS; i++) {
 				Interval interval = intervals[i];
 				if(!interval.isValid())
 					continue;
-				if(v > interval.max) {
-					return true; // Larger than a full interval!
+				validIntervals++;
+				if(v > interval.max + 1) {
+					largerThanAnInterval = true;
 				}
-				if(interval.max > largest) {
-					largest = interval.max;
+				if(interval.max > max) {
+					max = interval.max;
+				}
+				if(interval.min < min) {
+					min = interval.min;
 				}
 			}
-			if(v == largest) {
-				return true;
+			if(validIntervals > 3 && largerThanAnInterval) {
+				return true; // There has to be enough intervals and light value must be higher than one of them.
 			}
 		}
 		return false;
@@ -119,7 +125,7 @@ public class FigureSensor {
 		}
 		
 		public boolean isValid() {
-			return polls > 5 && min != max; // Poll at least some times before interval is valid.
+			return polls > 5; // Poll at least some times before interval is valid.
 		}
 	}
 }

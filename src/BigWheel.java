@@ -47,8 +47,6 @@ public class BigWheel {
 		turner.setSpeed(SPEED_TURN);
 		turner.setAcceleration(ACCELERATION);
 		lifterDown();
-		
-		figureSensor.calibrate();
 	}
 	
 	private static void turn(int slots) {
@@ -120,9 +118,13 @@ public class BigWheel {
 			}
 		}
 		lifter.flt();
+		
+		figureSensor.resume();
 	}
 	
 	private static void lifterUp() {
+		figureSensor.pause();
+
 		lifter.setPower(26);
 		lifter.backward();
 		int base = lifter.getTachoCount();

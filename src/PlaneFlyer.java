@@ -1,18 +1,20 @@
-import mmm.Time;
+import mmm.*;
 import lejos.nxt.*;
 
 /**
  * MMM Module Plane Flyers from the video game Theme Park.
  * Building instructions for MMM modules are on brickhub.org
  * @author Lasse Deleuran
+ * 
+ * TODO: Use new Track class!
  */
-public class PlaneFlyer {
+public class PlaneFlyer implements ButtonAdjustable {
 	private static final NXTMotor track = new NXTMotor(MotorPort.C);
 	private static final NXTRegulatedMotor lifter = new NXTRegulatedMotor(MotorPort.A);
 	private static final NXTRegulatedMotor turner = new NXTRegulatedMotor(MotorPort.B);
 	private static final NXTMotor turnResetter = new NXTMotor(MotorPort.B);
 	
-	private static final LightSensor light = new LightSensor(SensorPort.S3);
+	private static final FigureSensor figureSensor = new FigureSensor(SensorPort.S3);
 	private static final TouchSensor touch = new TouchSensor(SensorPort.S4);
 
 	public static final int CAPACITY = 4;
@@ -32,17 +34,13 @@ public class PlaneFlyer {
 	public static final int TURN_DOOR = -120;
 	
 	private static int guests = 0;
-	private static int sensorValFree, sensorValFig; // Light sensor values after initial calibration.
 	
 	public static void main(String[] args) {
 		init();
 		
 		while(true) {
-			for(int i = 0; i < 4 && pickup(); i++)
+			for(int i = 0; i < CAPACITY && pickup(); i++)
 				;
-			if(Button.ENTER.isDown()) {
-				return;
-			}
 			if(guests > 0) {
 				lifter.rotate(LIFT_TOP);
 				turner.setSpeed(SPEED_TURN_FAST);
@@ -68,10 +66,7 @@ public class PlaneFlyer {
 		in();
 
 		// Wait for guest. If no guest arrives, then return false:
-		if(!seesMinifig(20*1000)) {
-			if(Button.ENTER.isDown()) {
-				return false; // Shut down.
-			}
+		if(!figureSensor.seesMinifig(20*1000)) {
 			track.setPower(POWER_TRACK_SLOW);
 			out();
 			
@@ -123,41 +118,8 @@ public class PlaneFlyer {
 		}
 	}
 	
-	private static void calibrate() {
-		light.setFloodlight(true);
-		Time.sleep(200);
-		sensorValFree = light.getLightValue();
-
-		for(int i = 0; i < 5; i++) {
-			light.setFloodlight(false);
-			Time.sleep(100);
-			light.setFloodlight(true);
-			Time.sleep(100);
-		}
-		
-		while(true) {
-			if(Button.ENTER.isDown()) {
-				LCD.drawInt(light.getLightValue(), 3, 1);
-				break;
-			}
-			else if(Button.RIGHT.isDown()) {
-				turner.rotate(-10);
-			}
-			else if(Button.LEFT.isDown()) {
-				turner.rotate(10);
-			}
-			Time.sleep(200);
-		}
-		sensorValFig = light.getLightValue();
-
-		LCD.clear();		
-		LCD.drawInt(sensorValFree, 3, 2);
-		LCD.drawInt(sensorValFig, 3, 3);
-		light.setFloodlight(false);
-	}
-
 	private static void init() {
-		calibrate();
+		//figureSensor.calibrate(); TODO: We need another way of adjusting the tower during startup!
 
 		lifter.setSpeed(SPEED_LIFT);
 		if(touch.isPressed()) {
@@ -166,6 +128,7 @@ public class PlaneFlyer {
 				;
 		}
 		downAndReset();
+		KillSwitch.enable();
 		
 		// Assume turn motor is placed with a plane over the entrance:
 		turner.setAcceleration(ACCELERATION);
@@ -235,25 +198,6 @@ public class PlaneFlyer {
 		turner.setSpeed(SPEED_LIFT);
 		turner.resetTachoCount();
 	}
-	
-	public static boolean seesMinifig(int timeoutMS) {	
-		light.setFloodlight(true);
-		while(timeoutMS > 0 && !Button.ENTER.isDown()) { 
-			Time.sleep(50);
-			timeoutMS -= 50;
-			int v = light.getLightValue();
-			LCD.drawInt(v, 3, 1);
-
-			int diffFig = Math.abs(v-sensorValFig);
-			int diffFree = Math.abs(v-sensorValFree);
-			if(diffFree > diffFig) {
-				light.setFloodlight(false);
-				return true;
-			}
-		}
-		light.setFloodlight(false);
-		return false;
-	}
 
 	public static void in() {
 		track.forward();
@@ -261,5 +205,15 @@ public class PlaneFlyer {
 	
 	public static void out() {
 		track.backward();
+	}
+
+	@Override
+	public void onLeft() {
+		turner.rotate(10);
+	}
+
+	@Override
+	public void onRight() {
+		turner.rotate(-10);
 	}
 }
