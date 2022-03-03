@@ -8,25 +8,23 @@ import lejos.nxt.*;
  * @author Lasse Deleuran
  */
 public class DuckShoot {
-	private static final NXTRegulatedMotor track = new NXTRegulatedMotor(MotorPort.A);
+	private static final Track track = new Track(MotorPort.A);
 	private static final NXTMotor gun = new NXTMotor(MotorPort.B);
 	private static final SoundSensor sound = new SoundSensor(SensorPort.S1);
-	private static final AdjustablePowerOutput aux = new AdjustablePowerOutput(MotorPort.C, 3);
 
-	public static final int SPEED_TRACK = 100;
 	public static final int GUN_TURN = 12;
 	
 	public static void main(String[] args) {
-		aux.start(); // Extra power output.
+		AuxController.setupAuxController(MotorPort.C, SensorPort.S3);
+		KillSwitch.enable();
 		
-		track.setSpeed(SPEED_TRACK);
-		track.forward();
+		track.out();
 		
 		resetGun(); // Ensure gun is loaded
 		int maxSound = 80; // Ensure value goes up in loud environments.
 		int shots = 0;
 		
-		while(!Button.ENTER.isDown()) {
+		while(true) {
 			int val = sound.readValue();
 			if(val > maxSound) {
 				maxSound = val;
@@ -41,7 +39,6 @@ public class DuckShoot {
 				shoot();
 			}
 		}
-		aux.stop();
 	}
 	
 	private static void shoot() {
