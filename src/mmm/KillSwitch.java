@@ -9,6 +9,9 @@ public class KillSwitch {
 		if(enabled) {
 			return; // Already enabled.
 		}
+		while(Button.ENTER.isDown()) {
+			; // Ensure no immediate return.
+		}
 		enabled = true;
 		
 		Button.ENTER.addButtonListener(new ButtonListener() {
