@@ -5,11 +5,9 @@ import lejos.nxt.*;
  * MMM Module Plane Flyers from the video game Theme Park.
  * Building instructions for MMM modules are on brickhub.org
  * @author Lasse Deleuran
- * 
- * TODO: Use new Track class!
  */
 public class PlaneFlyer implements ButtonAdjustable {
-	private static final NXTMotor track = new NXTMotor(MotorPort.C);
+	private static final Track track = new Track(MotorPort.C, true);
 	private static final NXTRegulatedMotor lifter = new NXTRegulatedMotor(MotorPort.A);
 	private static final NXTRegulatedMotor turner = new NXTRegulatedMotor(MotorPort.B);
 	private static final NXTMotor turnResetter = new NXTMotor(MotorPort.B);
@@ -24,8 +22,6 @@ public class PlaneFlyer implements ButtonAdjustable {
 	public static final int SPEED_TURN_SLOW = 150;
 	public static final int SPEED_TURN_FAST = 400;
 	public static final int SPEED_LIFT = 230;
-	public static final int POWER_TRACK_SLOW = 25;
-	public static final int POWER_TRACK_FAST = 50;
 
 	// Movements:
 	public static final int LIFT_CLEAR = -300;
@@ -61,14 +57,15 @@ public class PlaneFlyer implements ButtonAdjustable {
 	 * This plane might be empty if no passenger has arrived.
 	 * @return true if another guest should be picked up.
 	 */
-	private static boolean pickup() {
+	private static boolean pickup() {		
 		turner.setSpeed(SPEED_TURN_SLOW); // Slow for pickups.
-		in();
+		track.in();
+		track.boost(180);
 
 		// Wait for guest. If no guest arrives, then return false:
 		if(!figureSensor.seesMinifig(20*1000)) {
-			track.setPower(POWER_TRACK_SLOW);
-			out();
+			track.resetSpeed();
+			track.out();
 			
 			if(guests > 0) { // Only close airplane if there are guests:
 				liftToDoor();
@@ -78,15 +75,13 @@ public class PlaneFlyer implements ButtonAdjustable {
 		}
 		
 		// Get passenger into plane:
-		track.setPower(POWER_TRACK_FAST);
-		Time.sleep(1000);
-		track.setPower(POWER_TRACK_SLOW);
+		track.boost(350);
 		guests++;
 		
 		// Close the door:
-		track.flt();
+		track.stop();
 		liftToDoor();		
-		out();
+		track.out();
 		closeDoor();
 
 		if(guests < CAPACITY) {
@@ -107,9 +102,7 @@ public class PlaneFlyer implements ButtonAdjustable {
 		
 		downAndReset();
 		
-		track.setPower(POWER_TRACK_FAST);
-		Time.sleep(900); // clear the plane
-		track.setPower(POWER_TRACK_SLOW);
+		track.boost(-720);
 		guests--;
 
 		if(guests > 0) {
@@ -119,7 +112,7 @@ public class PlaneFlyer implements ButtonAdjustable {
 	}
 	
 	private static void init() {
-		//figureSensor.calibrate(); TODO: We need another way of adjusting the tower during startup!
+		//figureSensor.calibrate(); TODO: We now need another way of adjusting the tower during startup!
 
 		lifter.setSpeed(SPEED_LIFT);
 		if(touch.isPressed()) {
@@ -135,8 +128,7 @@ public class PlaneFlyer implements ButtonAdjustable {
 		turner.flt();
 		
 		// Set track:
-		track.setPower(POWER_TRACK_SLOW);
-		in();
+		track.in();
 	}
 	
 	private static void turn(int planeAngle) {
@@ -197,14 +189,6 @@ public class PlaneFlyer implements ButtonAdjustable {
 		// Restore turner:
 		turner.setSpeed(SPEED_LIFT);
 		turner.resetTachoCount();
-	}
-
-	public static void in() {
-		track.forward();
-	}
-	
-	public static void out() {
-		track.backward();
 	}
 
 	@Override
