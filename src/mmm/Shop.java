@@ -5,9 +5,8 @@ import java.io.File;
 
 public class Shop extends Thread {
 	public static final String BELL_FILE = "bell.wav"; // Upload to NXT: "nxjupload.bat -u sounds/bell.wav"
-
 	
-	public static boolean shouldStartShop(ADSensorPort port) {
+	public static boolean shouldStartShop(SensorPort port) {
 		LightSensor sensor = new LightSensor(port);
 		return sensor.readValue() > 0; // There is a light sensor, so most likely a shop is attached.
 	}

@@ -5,6 +5,7 @@ import lejos.nxt.NXTRegulatedMotor;
 
 public class Track {
 	public static final int SPEED_TRACK = 100;	
+	public static final int SPEED_TRACK_BOOST = 250;	
 	
 	private NXTRegulatedMotor track;
 	private boolean forwardIsIn;
@@ -20,7 +21,17 @@ public class Track {
 	}
 	
 	public void boost() {
-		track.setSpeed(2*SPEED_TRACK);
+		track.setSpeed(SPEED_TRACK_BOOST);
+	}
+
+	public void boost(int angle) {
+		boost();
+		track.rotate(angle);
+		resetSpeed();
+		if(angle > 0)
+			track.forward();
+		else
+			track.backward();
 	}
 
 	public void resetSpeed() {
