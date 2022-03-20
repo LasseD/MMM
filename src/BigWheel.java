@@ -25,9 +25,6 @@ public class BigWheel {
 	public static void main(String[] args) {
 		init();
 		
-		track.out();
-		Time.sleep(1500);
-		
 		while(guests < CAPACITY) {
 			if(pickup() && guests < CAPACITY) {
 				turn(guests%2 == 1 ? 3 : 1);
@@ -47,6 +44,11 @@ public class BigWheel {
 		turner.setSpeed(SPEED_TURN);
 		turner.setAcceleration(ACCELERATION);
 		lifterDown();
+
+		track.out();
+		Time.sleep(1500);
+		
+		KillSwitch.enable();
 	}
 	
 	private static void turn(int slots) {
