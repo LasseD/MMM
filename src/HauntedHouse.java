@@ -25,10 +25,10 @@ public class HauntedHouse {
 
 		while(true) {
 			track.out();
-			Time.sleep(10000);
+			Time.sleep(15000);
 
 			track.in();
-			if(sensor.seesMinifig(30000)) {
+			if(sensor.seesMinifig(60000)) {
 				Time.sleep(300); // Ensure figure is fully in
 				sensor.pause();
 				lift.rotate(LIFT_DIST/10);
@@ -46,13 +46,13 @@ public class HauntedHouse {
 
 		lift.suspendRegulation();
 
-		liftResetter.setPower(15);
+		liftResetter.setPower(30);
 		liftResetter.backward();
 		while(true) {
 			int from = liftResetter.getTachoCount();
-			Time.sleep(100);
+			Time.sleep(150);
 			int to = liftResetter.getTachoCount();
-			if(from - to < 3) {
+			if(from - to < 2) {
 				break;
 			}
 		}
@@ -60,7 +60,6 @@ public class HauntedHouse {
 		
 		lift.stop();
 		lift.resetTachoCount();
-		lift.rotate(55);
 		
 		sensor.resume();
 	}
