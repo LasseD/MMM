@@ -16,7 +16,7 @@ public class BigWheel {
 	public static final int CAPACITY = 6;
 
 	// Speed and acceleration:
-	public static final int ACCELERATION = 300;	
+	public static final int ACCELERATION = 150;	
 	public static final int SPEED_TURN = 80;
 	public static final int SPEED_LIFT = 130;
 	
@@ -31,7 +31,7 @@ public class BigWheel {
 			}
 		}
 
-		while(!Button.ENTER.isDown()) {
+		while(true) {
 			turn(-7);
 			leave();
 			while(!pickup()) {
@@ -41,14 +41,14 @@ public class BigWheel {
 	}
 	
 	private static void init() {
+		KillSwitch.enable();
 		turner.setSpeed(SPEED_TURN);
 		turner.setAcceleration(ACCELERATION);
 		lifterDown();
 
 		track.out();
-		Time.sleep(1500);
+		Time.sleep(15000);
 		
-		KillSwitch.enable();
 	}
 	
 	private static void turn(int slots) {
@@ -62,10 +62,7 @@ public class BigWheel {
 	 * @return true if another guest should be picked up.
 	 */
 	private static boolean pickup() {
-		track.boost();
-		track.in();
-		Time.sleep(750);
-		track.resetSpeed();
+		track.boost(70);
 
 		if(!figureSensor.seesMinifig(20*1000)) {
 			track.out();
@@ -73,22 +70,12 @@ public class BigWheel {
 		}
 		
 		track.stop();
-		track.rotate(470);
+		track.rotate(485); // Clear corner
 		lifterUp();
-		track.rotate(370);
+		track.rotate(380); // Get into pod.
 		track.in();
 		lifterDown();
-		track.out();
-		track.boost();
-		while(figureSensor.seesMinifig(5500)) {
-			// Try to get minifig out if stuck:
-			Time.sleep(4000);
-			track.in();
-			Time.sleep(850);
-			track.out();			
-			Time.sleep(4000);
-		}
-		track.resetSpeed();
+		clear();
 
 		guests++;
 		return true;
@@ -99,13 +86,24 @@ public class BigWheel {
 		track.rotate(-250);
 		track.out();
 		lifterDown();
-		track.boost();
-		Time.sleep(4500);
-		track.in();
-		Time.sleep(750);
+		clear();
+	}
+	
+	private static void clear() {
 		track.out();
-		Time.sleep(2500);
-		track.resetSpeed();
+		int tries = 0;
+		while(figureSensor.seesMinifig(6000)) {
+			// Try to get minifig out if stuck:
+			Time.sleep(4000);
+			track.in();
+			Time.sleep(850);
+			track.out();
+			Time.sleep(4000);
+			tries++;
+			if(tries == 4)
+				track.boost(); // People can't get out!
+		}
+		track.boost(-70);		
 	}
 	
 	private static void lifterDown() {
@@ -129,12 +127,10 @@ public class BigWheel {
 
 		lifter.setPower(26);
 		lifter.backward();
-		int base = lifter.getTachoCount();
 		while(true) {
 			int from = lifter.getTachoCount();
-			Time.sleep(100);
-			int to = lifter.getTachoCount();
-			if(base-to > 60 && from - to < 1) {
+			Time.sleep(200);
+			if(from == lifter.getTachoCount()) {
 				break;
 			}
 		}
