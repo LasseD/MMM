@@ -3,6 +3,8 @@ package mmm;
 import lejos.nxt.LCD;
 import lejos.nxt.LightSensor;
 import lejos.nxt.SensorPort;
+import lejos.nxt.addon.RCXLightSensor;
+import lejos.robotics.LampLightDetector;
 
 public class FigureSensor {
 	public static final int INTERVAL_LENGTH_MS = 4 * 1000;
@@ -10,13 +12,17 @@ public class FigureSensor {
 	public static final int SENSOR_POLLING_SLEEP_MS = 50;
 	public static final int SLEEP_POLLING_SLEEP_MS = 150;
 	
-	private LightSensor light;
+	private LampLightDetector light;
 	private Interval[] intervals;
 	private volatile boolean paused;
 
 	public FigureSensor(SensorPort port) {
+		this(port, false);		
+	}
+	
+	public FigureSensor(SensorPort port, boolean rxcSensor) {
 		paused = true;
-		light = new LightSensor(port);
+		light = rxcSensor ? new RCXLightSensor(port) : new LightSensor(port);
 		intervals = new Interval[NUMBER_OF_INTERVALS];
 		for(int i = 0; i < NUMBER_OF_INTERVALS; i++) {
 			intervals[i] = new Interval();
@@ -40,7 +46,7 @@ public class FigureSensor {
 							time = 0;
 						}
 						
-						int lightValue = light.getLightValue();
+						int lightValue = light.getNormalizedLightValue();
 						Interval interval = intervals[idx];
 						if(time == 0) {
 							interval.reset();
@@ -61,7 +67,7 @@ public class FigureSensor {
 			Time.sleep(SENSOR_POLLING_SLEEP_MS);
 			timeoutMS -= SENSOR_POLLING_SLEEP_MS;
 
-			int v = light.getLightValue();
+			int v = light.getNormalizedLightValue();
 			LCD.drawInt(v, 3, 1);
 
 			int max = -1, min = 100;
