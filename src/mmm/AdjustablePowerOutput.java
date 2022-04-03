@@ -7,14 +7,13 @@ import java.io.IOException;
 
 import lejos.nxt.*;
 
-public class AdjustablePowerOutput extends Thread {
+public class AdjustablePowerOutput implements ButtonListener {
 	public static final String FILE_NAME = "POWER";
 
 	private int lineNumber;
 	private File file;
 	private int speed; // -100 to 100
 	private BasicMotor motor;
-	private boolean stopped;
 
 	public AdjustablePowerOutput(MotorPort motorPort) {
 		this(motorPort, 0);
@@ -24,37 +23,7 @@ public class AdjustablePowerOutput extends Thread {
 		file = new File(FILE_NAME);
 		motor = new NXTMotor(motorPort);
 		this.lineNumber = lineNumber;
-		stopped = false;
-	}
-	
-	// returns first when button is released.
-	private boolean isPressed(Button b) {
-		boolean pressed = false;
 
-		int start = (int)System.currentTimeMillis();
-		
-		while(b.isDown() && start+100 > (int)System.currentTimeMillis()) {
-			pressed = true;
-		}
-		return pressed;
-	}
-	
-	private void handleButtons() throws IOException {		
-		if(isPressed(Button.LEFT)) {
-			speed -= 5;
-			if(speed < -100)
-				speed = -100;
-			writeFile();
-		}
-		else if(isPressed(Button.RIGHT)) {
-			speed += 5;
-			if(speed > 100)
-				speed = 100;
-			writeFile();
-		}		
-	}
-	
-	public void run() {
 		try {
 			// Read file with power level:
 			if(!file.exists()) {
@@ -67,30 +36,51 @@ public class AdjustablePowerOutput extends Thread {
 				speed = s.read()-100;
 				s.close();
 			}
-			
-			// Run forever:
-			while(!stopped) {
-				LCD.drawInt(speed, 4, 2, lineNumber);
-				Time.sleep(100);			
-				handleButtons();
-				updateMotor();
-			}
 		}
 		catch(IOException e) {
 			LCD.drawString("IOException", 0, 1);
 			LCD.drawString(e.getMessage(), 0, 2);
 		}
+		
+		Button.LEFT.addButtonListener(this);
+		Button.RIGHT.addButtonListener(this);
+		updateMotor();
 	}
 	
-	public void stop() {
-		stopped = true;
+	@Override
+	public void buttonReleased(Button b) {
+		// NOP
 	}
 	
-	private void writeFile() throws IOException {
-		FileOutputStream s = new FileOutputStream(file, false);
-		s.write(speed+100);
-		s.flush();
-		s.close();
+	@Override
+	public void buttonPressed(Button b) {
+		if(b.getId() == Button.LEFT.getId()) {
+			speed -= 5;
+			if(speed < -100)
+				speed = -100;
+			writeFile();
+		}
+		else if(b.getId() == Button.RIGHT.getId()) {
+			speed += 5;
+			if(speed > 100)
+				speed = 100;
+			writeFile();
+		}		
+		LCD.drawInt(speed, 4, 2, lineNumber);
+		updateMotor();
+	}
+	
+	private void writeFile() {
+		try {
+			FileOutputStream s = new FileOutputStream(file, false);
+			s.write(speed+100);
+			s.flush();
+			s.close();
+		}
+		catch(IOException e) {
+			LCD.drawString("IOException W", 0, 1);
+			LCD.drawString(e.getMessage(), 0, 2);
+		}
 	}
 		
 	private void updateMotor() {

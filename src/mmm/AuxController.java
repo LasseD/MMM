@@ -8,9 +8,11 @@ public class AuxController {
 			Shop shop = new Shop(sensorPort, motorPort);
 			shop.start();
 		}
+		else if(AuxTrack.shouldStartTrack(motorPort)) {
+			new AuxTrack(motorPort);
+		}
 		else {
-			AdjustablePowerOutput aux = new AdjustablePowerOutput(motorPort, 3);
-			aux.start();
+			new AdjustablePowerOutput(motorPort, 3);
 		}
 	}
 }
