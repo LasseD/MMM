@@ -20,66 +20,64 @@ public class BouncyCastle {
 		KillSwitch.enable();
 		
 		jump.flt();
-		jump.setSpeed(110);
-		jump.setAcceleration(4500);
-		matt.setPower(70);
+		jump.setSpeed(75);
+		jump.setAcceleration(2500);
+		matt.setPower(65);
 		matt.flt();
 
 		track.out();
-
 		resetJump();
-		
-		while(true) {
-			if(sensor.seesMinifig(30000)) {
-				if(invite()) {
-					// Adjust matt a bit to clear the inner wall:
-					matt.forward();
-					Time.sleep(50);
-					matt.flt();
 
-					bounce();
-					bounce();
-					bounce();
-					bounce();
-					leave();
-					Time.sleep(10000); // Cool down					
-				}
+		while(true) {
+			invite();
+			if(guests >= CAPACITY) {
+				// Adjust matt a bit to clear the inner wall:
+				matt.forward();
+				Time.sleep(90);
+				matt.flt();
+
+				bounce();
+				bounce();
+				bounce();
+				bounce();
+				leave();
+				Time.sleep(10000); // Cool down before inviting again.
 			}
 		}
 	}
 
-	public static boolean invite() {
-		if(guests >= CAPACITY) {
-			track.out();
-			matt.flt();
-			return true;
+	public static void invite() {
+		if(!sensor.seesMinifig(30000)) {
+			return; // No minifig. No change.
 		}
-		
+		long lastMinifig = System.currentTimeMillis();
 		guests++;
 		Sound.beepSequenceUp();
-		
+
 		// Go to entrance:
 		track.in();
 		track.boost();
-		
-		// Clear the sensor. If another minifig makes it, then that is alright too:
-		Time.sleep(800);
+		Time.sleep(1500); // Clear the sensor.
 
 		// Go onto matt:
 		matt.backward();
-		if(sensor.seesMinifig(3000)) {
-			return invite();
-		}
 		
+		while(guests < CAPACITY && sensor.seesMinifig(4000)) {
+			guests++;
+			Sound.beepSequenceUp();
+			lastMinifig = System.currentTimeMillis();
+			Time.sleep(1500); // Clear the sensor.
+		}
+		Time.sleep(5000 - (int)(System.currentTimeMillis()-lastMinifig));
+		
+		// Back to normal until we see another minifig:
 		track.resetSpeed();
 		track.out();
 		matt.flt();		
-		return guests >= CAPACITY;
 	}
 
 	public static void bounce() {
-		jump.resetTachoCount();
-		jump.rotateTo(65);
+		jump.rotateTo(38);
 		jump.rotateTo(0);
 	}
 
@@ -91,26 +89,29 @@ public class BouncyCastle {
 		jumpResetter.backward();
 		while(true) {
 			int pos = jumpResetter.getTachoCount();
-			Time.sleep(100);
-			if(jumpResetter.getTachoCount() == pos)
+			Time.sleep(150);
+			if(Math.abs(jumpResetter.getTachoCount() - pos) < 2)
 				break;
 		}
 		jumpResetter.flt();
 		jump.resetTachoCount();		
+		jump.rotateTo(20);
 	}
 
 	public static void leave() {
 		jump.rotateTo(30);
-		track.boost();
-
 		matt.forward();
 
-		Time.sleep(6500); // vacate castle
-		
+		track.boost(-1300);
+		// Shuffle matt in case people are stuck:
+		matt.backward();
+		track.boost(80);
+		matt.forward();
+		track.boost(-1500);
+
 		matt.flt();
 		resetJump();
 		
-		track.resetSpeed();
 		guests = 0;
 	}
 }
