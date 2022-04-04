@@ -11,17 +11,6 @@ public class SimpleFigureSensor {
 	}
 	
 	public void calibrate() {
-		this.calibrate(new ButtonAdjustable() {
-			@Override
-			public void onRight() {
-			}			
-			@Override
-			public void onLeft() {
-			}
-		});
-	}
-	
-	public void calibrate(ButtonAdjustable adjuster) {
 		light.setFloodlight(true);
 		Time.sleep(100);
 		sensorValFree = light.getLightValue();
@@ -37,12 +26,6 @@ public class SimpleFigureSensor {
 			if(Button.ENTER.isDown()) {
 				LCD.drawInt(light.getLightValue(), 3, 1);
 				break;
-			}
-			else if(Button.RIGHT.isDown()) {
-				adjuster.onRight();
-			}
-			else if(Button.LEFT.isDown()) {
-				adjuster.onLeft();
 			}
 			Time.sleep(200);
 		}
