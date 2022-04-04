@@ -6,7 +6,7 @@ import lejos.nxt.*;
  * Building instructions for MMM modules are on brickhub.org
  * @author Lasse Deleuran
  */
-public class PlaneFlyer implements ButtonAdjustable {
+public class PlaneFlyer {
 	private static final Track track = new Track(MotorPort.C, true);
 	private static final NXTRegulatedMotor lifter = new NXTRegulatedMotor(MotorPort.A);
 	private static final NXTRegulatedMotor turner = new NXTRegulatedMotor(MotorPort.B);
@@ -111,9 +111,42 @@ public class PlaneFlyer implements ButtonAdjustable {
 		}
 	}
 	
+	private static boolean recentlyAdjusted = false;
 	private static void init() {
-		//figureSensor.calibrate(); TODO: We now need another way of adjusting the tower during startup!
-
+		track.out();
+		
+		Button.RIGHT.addButtonListener(new ButtonListener() {			
+			@Override
+			public void buttonReleased(Button b) {
+				// NOP
+			}
+			
+			@Override
+			public void buttonPressed(Button b) {
+				recentlyAdjusted = true;
+				turner.rotate(-10);
+			}
+		});
+		
+		Button.LEFT.addButtonListener(new ButtonListener() {			
+			@Override
+			public void buttonReleased(Button b) {
+				// NOP
+			}
+			
+			@Override
+			public void buttonPressed(Button b) {
+				recentlyAdjusted = true;
+				turner.rotate(10);
+			}
+		});
+		
+		do {
+			recentlyAdjusted = false;
+			Time.sleep(15000);
+		}
+		while(recentlyAdjusted);
+		
 		lifter.setSpeed(SPEED_LIFT);
 		if(touch.isPressed()) {
 			lifter.backward();
@@ -189,15 +222,5 @@ public class PlaneFlyer implements ButtonAdjustable {
 		// Restore turner:
 		turner.setSpeed(SPEED_LIFT);
 		turner.resetTachoCount();
-	}
-
-	@Override
-	public void onLeft() {
-		turner.rotate(10);
-	}
-
-	@Override
-	public void onRight() {
-		turner.rotate(-10);
 	}
 }
