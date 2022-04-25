@@ -7,14 +7,15 @@ import lejos.nxt.addon.RCXLightSensor;
 import lejos.robotics.LampLightDetector;
 
 public class FigureSensor {
-	public static final int INTERVAL_LENGTH_MS = 4 * 1000;
-	public static final int NUMBER_OF_INTERVALS = 36;
+	public static final int MEM_SIZE = 200;
 	public static final int SENSOR_POLLING_SLEEP_MS = 50;
-	public static final int SLEEP_POLLING_SLEEP_MS = 150;
+	public static final int SENSOR_SLEEP_MS = 150;
+	public static final int TRIGGER_SIZE = 3; // Number of measurements where the sensor should see a high value for the seesMinifig to return true
 	
 	private LampLightDetector light;
-	private Interval[] intervals;
+	private int[] mem;
 	private volatile boolean paused;
+	private volatile int currentIdx;
 
 	public FigureSensor(SensorPort port) {
 		this(port, false);		
@@ -23,42 +24,74 @@ public class FigureSensor {
 	public FigureSensor(SensorPort port, boolean rxcSensor) {
 		paused = true;
 		light = rxcSensor ? new RCXLightSensor(port) : new LightSensor(port);
-		intervals = new Interval[NUMBER_OF_INTERVALS];
-		for(int i = 0; i < NUMBER_OF_INTERVALS; i++) {
-			intervals[i] = new Interval();
+		mem = new int[MEM_SIZE];
+		for(int i = 0; i < MEM_SIZE; i++) {
+			mem[i] = -1;
 		}
 		
 		// Start a thread to poll the sensor and update the intervals
 		new Thread(){
 			@Override
 			public void run() {
-				int time = 0;
-				int idx = 0;
+				currentIdx = 0;
 				
 				while(true) {
 					if(!paused) {
 						Time.sleep(SENSOR_POLLING_SLEEP_MS);
-						time += SENSOR_POLLING_SLEEP_MS;
-						if(time > INTERVAL_LENGTH_MS) {
-							idx++;
-							if(idx >= NUMBER_OF_INTERVALS)
-								idx = 0;
-							time = 0;
-						}
 						
-						int lightValue = light.getNormalizedLightValue();
-						Interval interval = intervals[idx];
-						if(time == 0) {
-							interval.reset();
-						}
-						interval.poll(lightValue);
+						mem[currentIdx] = light.getNormalizedLightValue();
+						if(currentIdx == MEM_SIZE-1)
+							currentIdx = 0;
+						else
+							currentIdx++;
 					}
 					else {
-						Time.sleep(SLEEP_POLLING_SLEEP_MS);						
+						Time.sleep(SENSOR_SLEEP_MS);						
 					}
 				}
 			}
 		}.start();
+	}
+	
+	private boolean seesMinifig() {
+		int max = -1, min = 10000, cnt = 0;
+		long sum = 0;
+		
+		for(int i = 0; i < MEM_SIZE; i++) {
+			int v = mem[i];
+			if(v < 0)
+				continue; // Not yet set.
+			
+			if(v > max) {
+				max = v;
+			}
+			if(v < min) {
+				min = v;
+			}
+			sum += v;
+			cnt++;
+		}
+		int avg = (int)(sum/cnt);
+		
+		LCD.drawInt(cnt, 3, 2, 0);
+		LCD.drawInt(avg, 3, 2, 1);
+		LCD.drawInt(min, 3, 2, 2);
+		LCD.drawInt(max, 3, 2, 3);
+		
+		if(cnt < 10 || min > max-20)
+			return false; // Not enough info
+
+		// Check that the last TRIGGER_SIZE measurements are all OK:
+		for(int i = 0; i < TRIGGER_SIZE; i++) {
+			int idx = (i + currentIdx - TRIGGER_SIZE + MEM_SIZE) % MEM_SIZE;
+			int v = mem[idx];
+			if(v < 0)
+				return false; // No reading.
+			if(v < avg)
+				return false;
+		}
+
+		return true;
 	}
 	
 	public boolean seesMinifig(int timeoutMS) {	
@@ -66,31 +99,8 @@ public class FigureSensor {
 		while(timeoutMS > 0) { 
 			Time.sleep(SENSOR_POLLING_SLEEP_MS);
 			timeoutMS -= SENSOR_POLLING_SLEEP_MS;
-
-			int v = light.getNormalizedLightValue();
-			LCD.drawInt(v, 3, 1);
-
-			int max = -1, min = 100;
-			int validIntervals = 0;
-			boolean largerThanAnInterval = false;
-			for(int i = 0; i < NUMBER_OF_INTERVALS; i++) {
-				Interval interval = intervals[i];
-				if(!interval.isValid())
-					continue;
-				validIntervals++;
-				if(v > interval.max + 1) {
-					largerThanAnInterval = true;
-				}
-				if(interval.max > max) {
-					max = interval.max;
-				}
-				if(interval.min < min) {
-					min = interval.min;
-				}
-			}
-			if(validIntervals > 3 && largerThanAnInterval) {
-				return true; // There has to be enough intervals and light value must be higher than one of them.
-			}
+			if(seesMinifig())
+				return true;
 		}
 		return false;
 	}
@@ -105,33 +115,7 @@ public class FigureSensor {
 		paused = false;
 	}
 	
-	private static class Interval {
-		public int min, max, polls;
-		
-		public Interval() {
-			reset();
-		}
-		
-		public void reset() {
-			min = max = -1;
-			polls = 0;			
-		}
-		
-		public void poll(int i) {
-			polls++;
-			if(min == -1) {
-				min = max = i;
-			}
-			else if(i < min) {
-				min = i;
-			}
-			else if(i > max) {
-				max = i;
-			}
-		}
-		
-		public boolean isValid() {
-			return polls > 5; // Poll at least some times before interval is valid.
-		}
+	public void setFloodlight(boolean on) {
+		light.setFloodlight(on);
 	}
 }
