@@ -25,15 +25,16 @@ public class BigWheel {
 	public static void main(String[] args) {
 		init();
 		
-		while(guests < CAPACITY) {
+		/*while(guests < CAPACITY) {
 			if(pickup() && guests < CAPACITY) {
 				turn(guests%2 == 1 ? 3 : 1);
 			}
-		}
+		}//*/
 
 		while(true) {
 			turn(-7);
 			leave();
+			turn(-6);
 			while(!pickup()) {
 				turn(-6);
 			}
@@ -47,8 +48,8 @@ public class BigWheel {
 		lifterDown();
 
 		track.out();
-		Time.sleep(15000);
-		
+		figureSensor.resume();
+		Time.sleep(5000);
 	}
 	
 	private static void turn(int slots) {
@@ -62,9 +63,9 @@ public class BigWheel {
 	 * @return true if another guest should be picked up.
 	 */
 	private static boolean pickup() {
-		track.boost(70);
+		track.boost(100);
 
-		if(!figureSensor.seesMinifig(20*1000)) {
+		if(!figureSensor.seesMinifig(15000)) {
 			track.out();
 			return false; // No figure detected
 		}
@@ -92,7 +93,7 @@ public class BigWheel {
 	private static void clear() {
 		track.out();
 		int tries = 0;
-		while(figureSensor.seesMinifig(6000)) {
+		while(figureSensor.seesMinifig(4000)) {
 			// Try to get minifig out if stuck:
 			Time.sleep(4000);
 			track.in();
@@ -100,10 +101,10 @@ public class BigWheel {
 			track.out();
 			Time.sleep(4000);
 			tries++;
-			if(tries == 4)
+			if(tries == 2)
 				track.boost(); // People can't get out!
 		}
-		track.boost(-70);		
+		track.boost(-75);		
 	}
 	
 	private static void lifterDown() {
@@ -125,7 +126,7 @@ public class BigWheel {
 	private static void lifterUp() {
 		figureSensor.pause();
 
-		lifter.setPower(26);
+		lifter.setPower(36);
 		lifter.backward();
 		while(true) {
 			int from = lifter.getTachoCount();
