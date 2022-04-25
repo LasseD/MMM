@@ -141,9 +141,10 @@ public class PlaneFlyer {
 			}
 		});
 		
+		figureSensor.resume();
 		do {
 			recentlyAdjusted = false;
-			Time.sleep(15000);
+			Time.sleep(5000);
 		}
 		while(recentlyAdjusted);
 		

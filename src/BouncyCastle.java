@@ -26,7 +26,9 @@ public class BouncyCastle {
 		matt.flt();
 
 		track.out();
+		sensor.resume();
 		resetJump();
+		Time.sleep(5000);
 
 		while(true) {
 			invite();
