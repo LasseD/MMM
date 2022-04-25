@@ -39,7 +39,7 @@ public class CoconutShy {
 			}
 			lastDistance = val;
 
-			if(shots >= 5) {
+			if(shots >= 3) {
 				reset();
 				shots = 0;
 			}
