@@ -71,6 +71,8 @@ public class FigureSensor {
 			sum += v;
 			cnt++;
 		}
+		if(cnt == 0)
+			return false; // Not enough info
 		int avg = (int)(sum/cnt);
 		
 		LCD.drawInt(cnt, 3, 2, 0);
@@ -78,8 +80,9 @@ public class FigureSensor {
 		LCD.drawInt(min, 3, 2, 2);
 		LCD.drawInt(max, 3, 2, 3);
 		
-		if(cnt < 10 || min > max-20)
+		if(cnt < 10 || min > max-20) {
 			return false; // Not enough info
+		}
 
 		// Check that the last TRIGGER_SIZE measurements are all OK:
 		for(int i = 0; i < TRIGGER_SIZE; i++) {
@@ -99,8 +102,9 @@ public class FigureSensor {
 		while(timeoutMS > 0) { 
 			Time.sleep(SENSOR_POLLING_SLEEP_MS);
 			timeoutMS -= SENSOR_POLLING_SLEEP_MS;
-			if(seesMinifig())
+			if(seesMinifig()) {
 				return true;
+			}
 		}
 		return false;
 	}
