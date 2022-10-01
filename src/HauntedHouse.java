@@ -12,13 +12,16 @@ public class HauntedHouse {
 	private static final NXTRegulatedMotor lift = new NXTRegulatedMotor(MotorPort.B);
 	private static final NXTMotor liftResetter = new NXTMotor(MotorPort.B);
 	private static final FigureSensor sensor = new FigureSensor(SensorPort.S1);
+	private static final LightSensor light = new LightSensor(SensorPort.S2);
 
 	public static final int LIFT_SPEED = 200;
-	public static final int LIFT_DIST = 800;
+	public static final int LIFT_DIST = 835;
+	public static final int LIFT_CLEAR = 90;
 	
 	public static void main(String[] args) {
 		AuxController.setupAuxController(MotorPort.C, SensorPort.S3);
 		KillSwitch.enable();
+		light.setFloodlight(false);
 
 		reset();
 
@@ -33,12 +36,13 @@ public class HauntedHouse {
 				
 				sensor.pause();
 
-				lift.rotate(LIFT_DIST/10);
-				track.boost(-600);
+				lift.rotate(LIFT_CLEAR);
+				track.boost(-900); // Ensure alone.
 
-				lift.rotate(9*LIFT_DIST/10);
+				lift.rotate(LIFT_DIST-LIFT_CLEAR);
 				
-				ride();
+				flicker();
+				lift.rotate(-LIFT_DIST+20);		
 				
 				reset();					
 				sensor.resume();
@@ -51,50 +55,20 @@ public class HauntedHouse {
 		}
 	}
 	
-	private static void ride() {
-		if(Math.random() < 0.1) {
-			ride2();
-		}
-		else {
-			ride1();
-		}
-	}
-	
-	private static void ride1() {
-		Time.sleep(3000);
-		lift.rotate(-LIFT_DIST+20);		
-	}
-	
-	private static void ride2() {
-		final int D5 = 5*LIFT_DIST/10;
-		
-		Time.sleep(3000);
-
-		lift.rotate(-D5);
-		Time.sleep(500);
-		flicker();
-		lift.rotate(D5);
-		lift.setSpeed(800);
-		
-		lift.rotate(-LIFT_DIST+80);
-	}
-	
 	private static final int[] FLICKER_WAIT = {
-		30, 150, 
-		20, 50, 
-		40, 200,
-		30, 50,
-		20, 100, 
-		40, 150,
-		30, 50,
-		20, 150, 
-		50, 10,
+		30, 30,
+		60, 60,
+		90, 90,
+		120, 120,
+		150, 150,
+		180, 180,
+		2000, 50
 		};
 	private static void flicker() {
 		for(int i = 0; i < FLICKER_WAIT.length; i+= 2) {
-			sensor.setFloodlight(true);
+			light.setFloodlight(true);
 			Time.sleep(FLICKER_WAIT[i]);
-			sensor.setFloodlight(false);
+			light.setFloodlight(false);
 			Time.sleep(FLICKER_WAIT[i+1]);
 		}
 	}
@@ -105,7 +79,7 @@ public class HauntedHouse {
 		lift.setSpeed(LIFT_SPEED);
 		lift.suspendRegulation();
 
-		liftResetter.setPower(40);
+		liftResetter.setPower(55);
 		liftResetter.backward();
 		while(true) {
 			int from = liftResetter.getTachoCount();
