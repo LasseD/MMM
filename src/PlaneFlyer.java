@@ -13,7 +13,8 @@ public class PlaneFlyer {
 	private static final NXTMotor turnResetter = new NXTMotor(MotorPort.B);
 	
 	private static final FigureSensor figureSensor = new FigureSensor(SensorPort.S3);
-	private static final TouchSensor touch = new TouchSensor(SensorPort.S4);
+	private static final TouchSensor touch1 = new TouchSensor(SensorPort.S4);
+	private static final TouchSensor touch2 = new TouchSensor(SensorPort.S2);
 
 	public static final int CAPACITY = 4;
 
@@ -60,7 +61,7 @@ public class PlaneFlyer {
 	private static boolean pickup() {		
 		turner.setSpeed(SPEED_TURN_SLOW); // Slow for pickups.
 		track.in();
-		track.boost(180);
+		track.boost(170); // Change direction
 
 		// Wait for guest. If no guest arrives, then return false:
 		if(!figureSensor.seesMinifig(20*1000)) {
@@ -75,7 +76,7 @@ public class PlaneFlyer {
 		}
 		
 		// Get passenger into plane:
-		track.boost(350);
+		track.boost(375);
 		guests++;
 		
 		// Close the door:
@@ -102,13 +103,31 @@ public class PlaneFlyer {
 		
 		downAndReset();
 		
-		track.boost(-720);
+		clear();
 		guests--;
 
 		if(guests > 0) {
 			liftToDoor();
 			closeDoor();
 		}
+	}
+	
+	private static void clear() {
+		track.out();
+		int tries = 0;
+		Time.sleep(4500);		
+		while(figureSensor.seesMinifig(2000)) {
+			// Try to get minifig out if stuck:
+			Time.sleep(3000);
+			track.in();
+			Time.sleep(900);
+			track.out();
+			Time.sleep(3000);
+			tries++;
+			if(tries == 2)
+				track.boost(); // People can't get out!
+		}
+		track.resetSpeed();
 	}
 	
 	private static boolean recentlyAdjusted = false;
@@ -149,9 +168,9 @@ public class PlaneFlyer {
 		while(recentlyAdjusted);
 		
 		lifter.setSpeed(SPEED_LIFT);
-		if(touch.isPressed()) {
+		if(touch1.isPressed() || touch2.isPressed()) {
 			lifter.backward();
-			while(touch.isPressed())
+			while(touch1.isPressed() || touch2.isPressed())
 				;
 		}
 		downAndReset();
@@ -165,12 +184,12 @@ public class PlaneFlyer {
 		track.in();
 	}
 	
-	private static void turn(int planeAngle) {
+	private static void turn(float planeAngle) {
 		planeAngle = -planeAngle; // Turn counter clockwise, as that is forward for planes.
 		//public static final int TURN_QUARTER = -450; // 90*60/12
 		lifter.setSpeed(turner.getSpeed()*12/60);
-		lifter.rotate(planeAngle, true);
-		turner.rotate(planeAngle*60/12, true);
+		lifter.rotate((int)planeAngle, true);
+		turner.rotate((int)(planeAngle*60/12), true);
 
 		while(lifter.isMoving() || turner.isMoving())
 			;
@@ -180,7 +199,7 @@ public class PlaneFlyer {
 	
 	private static void liftToDoor() {
 		lifter.backward();
-		while(touch.isPressed())
+		while(touch1.isPressed())
 			;
 		lifter.stop();
 		lifter.rotate(-525);
@@ -196,7 +215,7 @@ public class PlaneFlyer {
 	private static void openDoor() {
 		turn(70);
 		lifter.rotate(-LIFT_CLEAR+15);
-		turn(20);
+		turn(22.5f); // Imprecise NXT motor. 20 would be correct.
 	}
 	
 	/*¨
@@ -204,10 +223,10 @@ public class PlaneFlyer {
 	 */
 	private static void downAndReset() {		
 		lifter.forward();
-		while(!touch.isPressed())
+		while(!(touch1.isPressed() || touch2.isPressed()))
 			;
 		lifter.stop();
-		lifter.rotate(125);
+		lifter.rotate(140);
 		
 		// Reset turner:
 		turner.flt();
@@ -215,9 +234,11 @@ public class PlaneFlyer {
 		
 		turnResetter.setPower(15);
 		turnResetter.forward();
-		Time.sleep(150);
+		Time.sleep(170);
 		turnResetter.backward();
-		Time.sleep(150);
+		Time.sleep(170);
+		turnResetter.forward();
+		Time.sleep(170);
 		turnResetter.flt();
 		
 		// Restore turner:
