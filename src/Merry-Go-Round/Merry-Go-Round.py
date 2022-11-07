@@ -1,91 +1,120 @@
 import hub as primitiveHub
 import utime
 
+dT = 0.015 # Loop time
+MIN_V = 16
+
 from spike import PrimeHub, LightMatrix, Button, StatusLight, ForceSensor, MotionSensor, Speaker, ColorSensor, App, DistanceSensor, Motor, MotorPair
 from spike.control import wait_for_seconds, wait_until, Timer
 from math import *
 
 hub = PrimeHub()
 
-# t = time, p = point, v = power
-class AccelerationMotorControl:
-    def __init__(self, port, vMax, toVMaxMS):
+class SoftMotorControl:
+    def __init__(self, port, vMax, relative = True): # Relative or absolute: Absolute moves to position in [0,360[
         self.port = port
+        self.relative = relative
+        self.positionIndex = 1 if relative else 2
+        self.p2 = self.p0 = self.getPosition()
+        self.vMin = MIN_V
         self.vMax = vMax
-        self.toVMaxMS = toVMaxMS
-        self.vMin = 0
-        print("Motor set up vMax ",vMax," time to vMax ",toVMaxMS)
-    def move(self,angle):
-        self.p1 = self.port.motor.get()[1]
-        self.angle = angle
-        self.p2 = self.p1+angle
-        self.t0 = utime.ticks_ms()
-        self.decelDist = -1
+    def getPosition(self):
+        ret = self.port.motor.get()[self.positionIndex]
+        if ret < 0 and not self.relative:
+            ret = ret + 360
+        return ret
+    def reset(self):
+        self.p2 = self.getPosition()
+    def move(self,angle,timeMS):
+        # Positions: p0 -> p -> p2
+        # Time:    t0 -> t -> t2
+        self.t0 = self.tPrev = utime.ticks_ms()
+        self.t2 = self.t0 + timeMS
+
+        self.p0 = self.p2
+        if self.relative:
+            self.p2 = self.p2 + angle
+        else:
+            self.p2 = angle
+
+        self.fwd = self.p2 > self.p0
+        self.pPrev = self.p0
+        self.avgSpeed = 1000 * (self.p2-self.p0) / timeMS
         self.v = self.vMin
-        self.stalledFromT = -1
-        self.dLast = 0
+
+        #print(self.port.motor.get(), self.positionIndex, self.p0,'->',self.p2,'in',timeMS,'relative:',self.relative)
     def update(self):
-        p = self.port.motor.get()[1]
-        if(self.vMin == 0 and p != self.p1):
-            self.vMin = self.v
-            print("Minimal movement power found: ",self.vMin)
-        d = abs(p - self.p1)
-
-        if(d >= abs(self.angle)): # Done:
-            self.port.motor.float()
-            return False
-
+        p = self.getPosition()
         t = utime.ticks_ms()
-        if(self.v > self.vMin and self.vMin > 0 and d == self.dLast): # Stalled:
-            if(self.stalledFromT < 0):
-                self.stalledFromT = t
-        else:
-            self.stalledFromT = -1
-        if(self.stalledFromT >= 0 and t - self.stalledFromT > 500):
-            print("Stalled! ", t, " ", self.stalledFromT)
+
+        if self.p2 == self.p0: # No move.
+            #print('No Move',t-self.t0,'Position',p,"V",self.v)
             self.port.motor.float()
+            return True
+
+        doneMove = (p-self.p0) / (self.p2-self.p0)
+        if doneMove >= 0.98: # Moved all the way!
+            self.port.motor.float()
+            #print('Done Time',t-self.t0,'Position',p,"V",self.v,"vMin",self.vMin)
+            return True
+
+        if p == self.pPrev: # Not yet moved!
+            self.v = self.v+1
+            self.port.pwm(self.v if self.fwd else -self.v)
+            self.vMin = min(self.vMax, max(self.vMin, self.v)) # Ensure we don't go over max, and also not under current vMin!
+            #print("Bump minimal movement power current",self.v,"vMin",self.vMin,"vMax",self.vMax,self.relative,"%moved",doneMove*100)
             return False
 
-        if(d < abs(self.p2-self.p1)/2): # Before half way:
-            self.v = self.vMin + (t-self.t0) / self.toVMaxMS * (self.vMax-self.vMin)
-            if(self.v >= self.vMax):
-                self.v = self.vMax
-                if(self.decelDist < 0):
-                    self.decelDist = abs(p - self.p1)
-        else: # After half way:
-            if(self.decelDist < 0):
-                self.decelDist = abs(self.angle/2)
-            if(self.decelDist == 0):
-                self.v = self.vMin
-            else:
-                self.v = self.vMin + abs(p-self.p2)/self.decelDist * (self.vMax-self.vMin)
-            if(self.v >= self.vMax):
-                self.v = self.vMax
+        time = (t-self.t0)/(self.t2-self.t0)
+        if time > 5: # Never reached goal!
+            self.port.motor.float()
+            print('TIMEOUT! time',t,"t0",self.t0,"t2",self.t2,"Move",p,"->",self.p2,"V",self.v,"vMin",self.vMin,"vMax",self.vMax,"%moved",doneMove*100)
+            raise Exception('Timeout')
 
-        if(self.angle > 0):
-            self.port.pwm(self.v)
-        else:
-            self.port.pwm(-self.v)
-        #print("Speed ",self.v)
-        self.dLast = d
-        return True
+        speed = 0 if p==self.pPrev else (t-self.tPrev) / (p-self.pPrev)
 
-carResetter = primitiveHub.port.D
-lifterResetter = primitiveHub.port.B
+        if doneMove > 0.7: # Decelerate:
+            self.v = self.vMin + (self.vMax-self.vMin) * (1 - doneMove)/0.3
+            #print('A',self.relative,self.v,self.vMin,self.vMax)
+        elif time < 0.3 and speed < self.avgSpeed: # Accellerate:
+            self.v = min(self.vMax, self.v + 5)
+            #print('B',self.relative,self.v,self.vMin,self.vMax)
+        elif speed > self.avgSpeed:
+            self.v = max(self.v-2,self.vMin)
+            #print('C',self.relative,self.v,self.vMin,self.vMax)
+        elif speed < self.avgSpeed:
+            self.v = min(self.vMax, self.v+2)
+            #print('D',self.relative,self.v,self.vMin,self.vMax)
+        self.port.pwm(self.v if self.fwd else -self.v)
+        #print('Time',t-self.t0,'Position',p,'%time',time,"speed",self.v)
+        self.tPrev = t
+        self.pPrev = p
+        return False
 
 class DualMotorControl:
     def __init__(self, mc1, mc2):
         self.mc1 = mc1
         self.mc2 = mc2
-    def move(self,angle1,angle2):
-        self.mc1.move(angle1)
-        self.mc2.move(angle2)
-        run = True
-        while(run):
-            wait_for_seconds(0.05)
-            a = self.mc1.update()
-            b = self.mc2.update()
-            run = a or b
+    def move(self,angle1,angle2,timeMS = 1000):
+        self.mc1.move(angle1, timeMS)
+        self.mc2.move(angle2, timeMS)
+        a = False
+        b = False
+        while not (a and b):
+            wait_for_seconds(dT)
+            a = a or self.mc1.update()
+            b = b or self.mc2.update()
+    def move1(self,angle1,timeMS = 1000):
+        self.mc1.move(angle1, timeMS)
+        while not self.mc1.update():
+            wait_for_seconds(dT)
+    def move2(self,angle2,timeMS = 1000):
+        self.mc2.move(angle2, timeMS)
+        while not self.mc2.update():
+            wait_for_seconds(dT)
+    def reset(self):
+        self.mc1.reset()
+        self.mc2.reset()
 
 def isStalled(motor):
     p1 = motor.get()[1]
@@ -99,30 +128,28 @@ def driveToStalled(port, speed):
         pass
     port.motor.float()
 
-def resetLifter():
-    driveToStalled(lifterResetter, 25)
+lifter = Motor('B')
+lifter.set_default_speed(7)
 
-def resetCar():
-    driveToStalled(carResetter, -25)
+car = Motor('D')
+car.set_default_speed(20)
 
-def resetCarAndLifter():
-    resetCar()
-    resetLifter()
-    car.run_for_degrees(25)
+carResetter = primitiveHub.port.D
+
+LIFT_IN = 67
+LIFT_ALL_UP = 90
+LIFT_CLEAR = 140
+LIFT_HALF_DOWN = 155
+LIFT_DOWN = 198
+CAR_SPACING_TO_FREE_LIFT_WHILE_UP = 80
+CAR_SPACING_TO_FREE_LIFT_WHILE_DOWN = 20
 
 light_sensor = ColorSensor('E')
 
 track = Motor('F')
 
-lifter = Motor('B')
-lifter.set_default_speed(7)
-lifter.set_degrees_counted(0)
-
-car = Motor('D')
-car.set_default_speed(20)
-
-aLifter = AccelerationMotorControl(primitiveHub.port.B, 25, 600)
-aCar = AccelerationMotorControl(primitiveHub.port.D, 40, 100)
+aLifter = SoftMotorControl(primitiveHub.port.B, 25, False) # False for absolute rotations
+aCar = SoftMotorControl(primitiveHub.port.D, 40, True)
 lifterCar = DualMotorControl(aLifter,aCar)
 
 rotator = Motor('A')
@@ -130,41 +157,40 @@ rotator.set_default_speed(37)
 rotatorResetter = primitiveHub.port.A
 
 def track_in():
-    track.start_at_power(-25)
-
+    track.start_at_power(-30)
+ 
 def track_out():
-    track.start_at_power(25)
+    track.start_at_power(30)
 
 def in_cup():
     track.stop()
-    # Lift all the way up:
-    lifterCar.move(-60,0)
-    track_out() # 128, -350
-    lifterCar.move(-69,-200)
-    # Push and pull:
-    car.run_for_degrees(490)
-    car.run_for_degrees(-530)
-    # Return:
-    lifterCar.move(129,240)
-    resetCarAndLifter()
+    lifterCar.move(LIFT_ALL_UP, 10) # Lift all the way up before moving car
+    track_out()
+    lifterCar.move(LIFT_IN,270) # Push minigif in
+    lifterCar.move2(-280-CAR_SPACING_TO_FREE_LIFT_WHILE_UP) # Pull completely out
+    lifterCar.move1(LIFT_ALL_UP) # Ensure lift is up before car moves toward cup
+    lifterCar.move(LIFT_DOWN,CAR_SPACING_TO_FREE_LIFT_WHILE_UP) # Return
 
 def out_cup():
-    # Lift all the way up:
-    lifterCar.move(-60,0)
-    lifterCar.move(-69,-200)
+    wait_for_seconds(3)
+    track_out()
+    # Prepare lift to get under the minifig:
+    lifterCar.move(LIFT_ALL_UP, 10)
+    lifterCar.move2(-CAR_SPACING_TO_FREE_LIFT_WHILE_UP)
+    lifterCar.move1(LIFT_IN)
     # Push and pull:
-    car.run_for_degrees(480)
-    lifterCar.move(19,50)
-    car.run_for_degrees(-480-50-20)
+    lifterCar.move2(295+CAR_SPACING_TO_FREE_LIFT_WHILE_UP-10)
+    lifterCar.move(LIFT_ALL_UP,50)
+    lifterCar.move2(-295 -CAR_SPACING_TO_FREE_LIFT_WHILE_UP -50)
     # Return:
-    lifterCar.move(110,220)
-    resetCarAndLifter()
+    lifterCar.move(LIFT_HALF_DOWN,CAR_SPACING_TO_FREE_LIFT_WHILE_UP+60)
+    lifterCar.move(LIFT_DOWN,-60)
     wait_for_seconds(3) # Ensure out
 
 banana = 140
 large = 40
-def rotate(steps):
-    rotator.run_for_rotations(-steps*banana/large/4, 30)
+def rotate(steps, power = 30):
+    rotator.run_for_rotations(-steps*banana/large/4, power)
 
 def invite():
     track_in()
@@ -175,27 +201,50 @@ def invite():
         else:
             seen = seen+1
     track.stop()
-    track.run_for_rotations(-1.8, 28)
+    track.run_for_rotations(-2, 35)
 
 def resetRotator():
     rotator.run_for_degrees(-100)
     driveToStalled(rotatorResetter, 35)
-    rotator.run_for_degrees(-33)
+    rotator.run_for_degrees(-29)
 
+def reset():
+    if lifter.get_position() > 185:
+        lifter.run_to_position(LIFT_DOWN)
+        driveToStalled(carResetter, -25)
+        car.run_for_degrees(CAR_SPACING_TO_FREE_LIFT_WHILE_DOWN)
+    else:
+        lifter.run_to_position(LIFT_ALL_UP)
+        driveToStalled(carResetter, -25)
+        car.run_for_degrees(CAR_SPACING_TO_FREE_LIFT_WHILE_UP)
+        lifter.run_to_position(LIFT_DOWN)
+    lifterCar.reset()
+    resetRotator()
+
+#reset()
 #invite()
 #in_cup()
 #out_cup()
-#track.run_for_rotations(10, 28)
+#resetRotator()
+#rotate(1)
 #raise SystemExit
 
-while(True):
-    resetRotator()
-    for _ in range(4):
-        rotate(1)
-        invite()
-        in_cup()
-    rotate(16)
-    for _ in range(4):
-        rotate(1)
-        out_cup()
-    wait_for_seconds(30) # Cool down
+while True:
+    try:
+        track_out()
+        reset()
+        while True:
+            for _ in range(4):
+                rotate(1)
+                out_cup()
+            wait_for_seconds(10) # Cool down
+            for _ in range(4):
+                rotate(1)
+                invite()
+                in_cup()
+            rotate(24, 36)
+    except:
+        for i in range(3):
+            hub.speaker.beep(52, 0.5)
+            wait_for_seconds(0.2)
+        hub.speaker.beep(48, 0.5)
