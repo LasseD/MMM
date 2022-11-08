@@ -79,7 +79,7 @@ public class BouncyCastle {
 	}
 
 	public static void bounce() {
-		jump.rotateTo(38);
+		jump.rotateTo(43);
 		jump.rotateTo(0);
 	}
 

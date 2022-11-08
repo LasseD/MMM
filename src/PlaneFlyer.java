@@ -25,8 +25,8 @@ public class PlaneFlyer {
 	public static final int SPEED_LIFT = 230;
 
 	// Movements:
-	public static final int LIFT_CLEAR = -300;
-	public static final int LIFT_TOP = -250;
+	public static final int LIFT_CLEAR = -350;
+	public static final int LIFT_TOP = -200;
 	
 	public static final int TURN_DOOR = -120;
 	

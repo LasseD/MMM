@@ -15,8 +15,8 @@ public class HauntedHouse {
 	private static final LightSensor light = new LightSensor(SensorPort.S2);
 
 	public static final int LIFT_SPEED = 200;
-	public static final int LIFT_DIST = 835;
-	public static final int LIFT_CLEAR = 90;
+	public static final int LIFT_DIST = 1380;
+	public static final int LIFT_CLEAR = 120;
 	
 	public static void main(String[] args) {
 		AuxController.setupAuxController(MotorPort.C, SensorPort.S3);
@@ -42,7 +42,7 @@ public class HauntedHouse {
 				lift.rotate(LIFT_DIST-LIFT_CLEAR);
 				
 				flicker();
-				lift.rotate(-LIFT_DIST+20);		
+				lift.rotate(-LIFT_DIST+20*5/3);		
 				
 				reset();					
 				sensor.resume();
@@ -91,7 +91,7 @@ public class HauntedHouse {
 		}
 		liftResetter.flt();
 		
-		lift.stop();
+		lift.flt();
 		lift.resetTachoCount();
 		
 		sensor.resume();
