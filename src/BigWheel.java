@@ -13,15 +13,11 @@ public class BigWheel {
 	
 	private static final FigureSensor figureSensor = new FigureSensor(SensorPort.S4);
 
-	public static final int CAPACITY = 6;
-
 	// Speed and acceleration:
 	public static final int ACCELERATION = 150;	
 	public static final int SPEED_TURN = 80;
 	public static final int SPEED_LIFT = 130;
-	
-	private static int guests = 0;
-	
+		
 	public static void main(String[] args) {
 		init();
 		
@@ -48,7 +44,6 @@ public class BigWheel {
 		lifterDown();
 
 		track.out();
-		figureSensor.resume();
 		Time.sleep(5000);
 	}
 	
@@ -75,10 +70,8 @@ public class BigWheel {
 		lifterUp();
 		track.rotate(380); // Get into pod.
 		track.in();
-		lifterDown();
 		clear();
 
-		guests++;
 		return true;
 	}
 	
@@ -86,14 +79,15 @@ public class BigWheel {
 		lifterUp();
 		track.rotate(-250);
 		track.out();
-		lifterDown();
 		clear();
 	}
 	
 	private static void clear() {
+		lifterDown();
 		track.out();
+		Time.sleep(5000);
 		int tries = 0;
-		while(figureSensor.seesMinifig(4000)) {
+		while(figureSensor.seesMinifig(2000)) {
 			// Try to get minifig out if stuck:
 			Time.sleep(4000);
 			track.in();
@@ -101,37 +95,32 @@ public class BigWheel {
 			track.out();
 			Time.sleep(4000);
 			tries++;
-			if(tries == 2)
+			if(tries == 3) {
 				track.boost(); // People can't get out!
+			}
 		}
-		track.boost(-75);		
 	}
 	
 	private static void lifterDown() {
-		lifter.setPower(12);
+		lifter.setPower(14);
 		lifter.forward();
 		while(true) {
 			int from = lifter.getTachoCount();
-			Time.sleep(100);
-			int to = lifter.getTachoCount();
-			if(to - from < 2) {
+			Time.sleep(200);
+			if(Math.abs(lifter.getTachoCount() - from) < 2) {
 				break;
 			}
 		}
 		lifter.flt();
-		
-		figureSensor.resume();
 	}
 	
 	private static void lifterUp() {
-		figureSensor.pause();
-
-		lifter.setPower(36);
+		lifter.setPower(35);
 		lifter.backward();
 		while(true) {
 			int from = lifter.getTachoCount();
 			Time.sleep(200);
-			if(from == lifter.getTachoCount()) {
+			if(Math.abs(lifter.getTachoCount() - from) < 2) {
 				break;
 			}
 		}
