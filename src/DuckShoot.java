@@ -12,7 +12,7 @@ public class DuckShoot {
 	private static final NXTMotor gun = new NXTMotor(MotorPort.B);
 	private static final Clapper clapper = new Clapper(SensorPort.S1);
 
-	public static final int GUN_TURN = 12;
+	public static final int GUN_TURN = 12, COOLDOWN_MS = 600;
 	
 	public static void main(String[] args) {
 		AuxController.setupAuxController(MotorPort.C, SensorPort.S3);
@@ -31,11 +31,14 @@ public class DuckShoot {
 	}
 	
 	private static void shoot() {
+		track.slow();
 		gun.forward();
 		while(gun.getTachoCount() < GUN_TURN)
 			;
 		gun.flt();
 		resetGun();
+		Time.sleep(COOLDOWN_MS); // Small cooldown.
+		track.resetSpeed();
 	}
 	
 	private static void resetGun() {

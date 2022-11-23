@@ -38,6 +38,10 @@ public class Track {
 		track.setSpeed(SPEED_TRACK);
 	}
 	
+	public void slow() {
+		track.setSpeed(SPEED_TRACK*3/5);
+	}
+	
 	public void stop() {
 		track.stop();
 	}
