@@ -59,7 +59,7 @@ public class ParasolChairs {
 				reset();
 				offloadAll();
 			}
-			Time.sleep(15000); // Cooldown
+			Time.sleep(7000); // Cooldown
 		}
 	}
 	
@@ -74,8 +74,8 @@ public class ParasolChairs {
 		track.boost(120);
 
 		// Wait for guest. If no guest arrives, then return false:
-		if(!figureSensor.seesMinifig(20*1000)) {
-			track.out();			
+		if(!figureSensor.seesMinifig(90*1000)) {
+			track.out();
 			return false;
 		}
 
