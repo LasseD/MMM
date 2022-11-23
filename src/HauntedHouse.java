@@ -13,6 +13,7 @@ public class HauntedHouse {
 	private static final NXTMotor liftResetter = new NXTMotor(MotorPort.B);
 	private static final FigureSensor sensor = new FigureSensor(SensorPort.S1);
 	private static final LightSensor light = new LightSensor(SensorPort.S2);
+	private static final TouchSensor touch = new TouchSensor(SensorPort.S4);
 
 	public static final int LIFT_SPEED = 200;
 	public static final int LIFT_DIST = 1380;
@@ -42,7 +43,6 @@ public class HauntedHouse {
 				lift.rotate(LIFT_DIST-LIFT_CLEAR);
 				
 				flicker();
-				lift.rotate(-LIFT_DIST+20*5/3);		
 				
 				reset();					
 				sensor.resume();
@@ -74,14 +74,16 @@ public class HauntedHouse {
 	}
 	
 	private static void reset() {
-		sensor.pause();
-
+		if(touch.isPressed()) {
+			lift.rotate(LIFT_CLEAR);
+		}
+		
 		lift.setSpeed(LIFT_SPEED);
 		lift.suspendRegulation();
 
 		liftResetter.setPower(55);
 		liftResetter.backward();
-		while(true) {
+		while(!touch.isPressed()) {
 			int from = liftResetter.getTachoCount();
 			Time.sleep(150);
 			int to = liftResetter.getTachoCount();
@@ -93,7 +95,8 @@ public class HauntedHouse {
 		
 		lift.flt();
 		lift.resetTachoCount();
-		
-		sensor.resume();
+		if(touch.isPressed()) {
+			lift.rotate(-30);
+		}		
 	}
 }
