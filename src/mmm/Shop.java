@@ -22,15 +22,16 @@ public class Shop extends Thread {
 	@Override
 	public void run() {
 		track.out();
-		Time.sleep(8000);
+		Time.sleep(8000); // Ensure sensor is calibrated.
 		while(true) {
 			track.in();
-			if(sensor.seesMinifig(10000)) {
+			boolean purchase = false;
+			if(sensor.seesMinifig(1000*60*4)) { // 4 minutes
 				Sound.playSample(file, 100);
-
-				track.out();
-				Time.sleep(10000);
+				purchase = true;
 			}
+			track.out();
+			Time.sleep(purchase ? 10000 : 4000); // Move out 10 seconds to get guest out, 4 seconds to potentially miscalibrated sensor.
 		}
 	}
 }
