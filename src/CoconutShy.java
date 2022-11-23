@@ -43,7 +43,10 @@ public class CoconutShy {
 	private static void reset() {
 		track.stop();
 		track.boost();
+		track.rotate(450); // Ensure the triggers are clear
 		track.rotate(-150);
+		track.stop();
+		Time.sleep(300);
 		track.rotate(180); // Ensure the lifters are down
 		track.resetSpeed();
 		track.out();
