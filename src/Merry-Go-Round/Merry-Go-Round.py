@@ -25,6 +25,8 @@ class SoftMotorControl:
         return ret
     def reset(self):
         self.p2 = self.getPosition()
+    def stop(self):
+        self.port.motor.float()        
     def move(self,angle,timeMS):
         # Positions: p0 -> p -> p2
         # Time:    t0 -> t -> t2
@@ -115,6 +117,9 @@ class DualMotorControl:
     def reset(self):
         self.mc1.reset()
         self.mc2.reset()
+    def stop(self):
+        self.mc1.stop()
+        self.mc2.stop()
 
 def isStalled(motor):
     p1 = motor.get()[1]
@@ -148,7 +153,7 @@ light_sensor = ColorSensor('E')
 
 track = Motor('F')
 
-aLifter = SoftMotorControl(primitiveHub.port.B, 25, False) # False for absolute rotations
+aLifter = SoftMotorControl(primitiveHub.port.B, 26, False) # False for absolute rotations
 aCar = SoftMotorControl(primitiveHub.port.D, 40, True)
 lifterCar = DualMotorControl(aLifter,aCar)
 
@@ -244,6 +249,9 @@ while True:
                 in_cup()
             rotate(24, 36)
     except:
+        rotator.stop()
+        track.stop()
+        lifterCar.stop()
         for i in range(3):
             hub.speaker.beep(52, 0.5)
             wait_for_seconds(0.2)
