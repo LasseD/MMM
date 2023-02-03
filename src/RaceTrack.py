@@ -14,8 +14,24 @@ colorSensor.detectable_colors([Color.RED, Color.YELLOW, Color.CYAN, Color.NONE])
 color = Color.NONE # Last read color
 indicator = ColorLightMatrix(Port.A)
 distanceSensor = UltrasonicSensor(Port.C)
-dPrevPrev = dPrev = distanceSensor.distance()
+dPrev = distanceSensor.distance()
+
+X = Color.NONE
+R = Color.RED
+G = Color.GREEN
+B = Color.BLUE
+Y = Color.YELLOW
+STATE_LIGHTS = {
+    -1: [X, X, X, X, R, X, X, X, X], # No read
+    0: [X, B, X, B, B, B, X, B, X], # Default
+    1: [X, B, X, B, B, B, Y, B, X], #
+    2: [X, B, X, B, B, B, Y, B, Y], #
+    3: [Y, B, Y, B, B, B, Y, B, X], #
+    4: [Y, B, Y, B, B, B, Y, B, Y], #
+    5: [X, G, X, G, G, G, X, G, X], # SHOOT!
+}
 state = -1
+
 hub.display.off() # Reduce power usage
 
 def reset():
@@ -39,48 +55,44 @@ def updateColor():
     hub.light.on(color) 
 
 def trigger():
-    global dPrev, dPrevPrev, state
+    global dPrev, state
+
     d = distanceSensor.distance()
+
     if d == 2000:
         state = -1
         return False # No value read
-    if d == dPrev:
-        return False # No change
-    print(d)
-    state = 0
-    if d < dPrev:
-        state = state + 1
-    if dPrev < dPrevPrev:
-        state = state + 1
-    dPrevPrev = dPrev
-    dPrev = d
-    return state == 2 or d < 300
 
+    d = int(d/4) # Adjust for what feels good...
+    if d >= dPrev:        
+        dPrev = d
+        state = 0
+        return False # No change
+
+    state = min((5 if state > -1 else 0), dPrev-d)
+    print(dPrev,"->",d,"state",state)
+    dPrev = d
+    return state == 5
+
+clearMid = False
 def updateLights():
-    if state == -1: # No read
-        indicator.on([Color.RED, Color.NONE, Color.RED,
-                      Color.NONE, Color.RED, Color.NONE,
-                      Color.RED, Color.NONE, Color.RED])
-    elif state == 2:
-        indicator.on([Color.RED, Color.YELLOW, Color.CYAN,
-                      Color.RED, Color.YELLOW, Color.CYAN,
-                      Color.RED, Color.YELLOW, Color.CYAN])
-    elif state == 1:
-        indicator.on([Color.RED, Color.YELLOW, Color.CYAN,
-                      Color.RED, Color.YELLOW, Color.CYAN,
-                      Color.NONE, Color.NONE, Color.NONE])
-    else:
-        indicator.on([Color.RED, Color.YELLOW, Color.CYAN,
-                      Color.NONE, Color.NONE, Color.NONE,
-                      Color.NONE, Color.NONE, Color.NONE])
+    global clearMid
+
+    clearMid = not clearMid
+    lights = STATE_LIGHTS[state]
+    if state >= 0:
+        if clearMid:
+            lights[4] = X
+        else:
+            lights[4] = G if state == 5 else B 
+    indicator.on(lights)
 
 track.run(-140)
 reset()
 
-# Main loop (wait 200ms for sensor to read): When closer x 2: shoot
 # Reset horses when color is seen.
 while not hub.buttons.pressed():
-    wait(200)
+    wait(250)
     if trigger():
         updateLights()
         shoot()
