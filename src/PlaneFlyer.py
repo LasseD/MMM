@@ -121,7 +121,7 @@ def pickup():
     ticksFree = 0
     while ticksFree <= 5: # Wait until sensor is free for some time:
         wait(100)
-        if figureSensor.distance() < 26:
+        if figureSensor.distance() < 19:
             ticksFree = 0
         else:
             ticksFree = ticksFree+1
@@ -152,7 +152,7 @@ def leave():
     innerTrack.run_angle(SPEED_INNER_TRACK, 400)
     timeFree = 0
     while timeFree < 3000:
-        if figureSensor.distance() <= 25:
+        if figureSensor.distance() < 19:
             timeFree = 0 
         wait(50)
         timeFree = timeFree + 50
@@ -170,6 +170,7 @@ def leave():
 #raise SystemExit()
 
 # Main loop:
+print('Plane Flyer Debugging Enabled', figureSensor.distance())
 track.run(SPEED_TRACK)
 init()
 while True:

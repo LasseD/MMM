@@ -17,9 +17,10 @@ state = 0
 # 1: Free for interaction
 # 2: Interaction
 
+print("Debugging enabled ", figureSensor.distance())
 while True:
     wait(100)
-    if figureSensor.distance() < 26:
+    if figureSensor.distance() < 20:
         watch.reset()
         if state != 0:
             state = 0
