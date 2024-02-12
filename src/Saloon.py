@@ -7,74 +7,82 @@ motorInner = Motor(Port.B)
 sensorInner = InfraredSensor(Port.C)
 sensorOuter = ColorDistanceSensor(Port.D)
 
-SPEED_TRACK_SLOW = 100
+SPEED_TRACK_SLOW = 60
 SPEED_TRACK = 140
 SPEED_TRACK_FAST = 300
 TICK = 50
-ANGLE_TARGET = 274
-ANGLE_OVERSHOOT = 643
-ANGLE_RESET_INNER_TRACK = 165
+ANGLE_TARGET = 305
+ANGLE_OVERSHOOT = 600
+ANGLE_RESET_INNER_TRACK = 127
 
 def reset():
-    motorInner.run_angle(SPEED_TRACK_FAST, 2*ANGLE_RESET_INNER_TRACK)
+    motorInner.run_time(SPEED_TRACK_FAST, 1500)
     motorInner.run_angle(-SPEED_TRACK_FAST, ANGLE_RESET_INNER_TRACK)
 
 def seesFigure():
-    return sensorInner.distance() < 20
+    d = sensorInner.distance()
+    #print(d)
+    return d < 14 or d > 50
 
 def invite():
     motorOuter.run(SPEED_TRACK)
     figureSeen = True
-    angleLastFigure = motorOuter.angle()-ANGLE_OVERSHOOT
+    angleLastFigure = -ANGLE_OVERSHOOT
     while True: # Wait until interaction is triggered
         wait(TICK)
         if seesFigure(): # Figure seen:
             angleLastFigure = motorOuter.angle()
             if not figureSeen:
                 print('Figure seen', sensorInner.distance())
-                motorOuter.run(SPEED_TRACK_SLOW)
                 sensorOuter.light.on(Color.GREEN)
                 figureSeen = True
-        if not figureSeen:
+        if not figureSeen: # Not seen figure:
             continue
-        if motorOuter.angle()-angleLastFigure > ANGLE_OVERSHOOT:
+        if motorOuter.angle()-angleLastFigure > ANGLE_OVERSHOOT: # Overshoot:
             print('Overshoot figure!')
             figureSeen = False
             sensorOuter.light.on(Color.RED)
             motorOuter.run(SPEED_TRACK)
             continue
-        # Figure seen, and not too late:
-        if sensorOuter.distance() < 80:            
+        if sensorOuter.distance() < 80: # Activate
             sensorOuter.light.on(Color.RED)
-            while seesFigure():
-                angleLastFigure = motorOuter.angle()
-                wait(TICK)
+            print('Activate at angle', motorOuter.angle(), sensorInner.distance())
+            motorOuter.run(SPEED_TRACK)
+            saw = True            
+            while saw:
+                saw = False
+                for i in range(0, 5):
+                    if seesFigure():
+                        saw = True
+                        angleLastFigure = motorOuter.angle()
+                        break
+                    wait(TICK)
             motorOuter.stop()
             angleDiff = motorOuter.angle()-angleLastFigure
-            print('Activate at angle', angleDiff)
-            motorOuter.run_angle(SPEED_TRACK_FAST, -(angleDiff-ANGLE_TARGET))            
-            motorInner.run_angle(-SPEED_TRACK_FAST, 1500)
-            motorOuter.run(SPEED_TRACK_SLOW)
-            motorInner.run_angle(-SPEED_TRACK_FAST, 1000)
+            motorOuter.run_angle(SPEED_TRACK_FAST, ANGLE_TARGET-angleDiff)
+            motorInner.run_time(-SPEED_TRACK_FAST, 5000)
             motorOuter.run(SPEED_TRACK)
-            motorInner.run_angle(SPEED_TRACK_FAST, ANGLE_RESET_INNER_TRACK)
+            reset()
             return
 
 def leave():
+    print('Leave saloon')
     sensorOuter.light.on(Color.RED)
     motorOuter.run(SPEED_TRACK)
     timeLastFigure = 0
-    while timeLastFigure < 3500:
+    while timeLastFigure < 3800:
         wait(TICK)
         timeLastFigure = timeLastFigure + TICK
         if seesFigure():
+            print('Figure seen. Resetting countdown')
             timeLastFigure = 0
+    print('Free: Visitor leaves')
     motorOuter.stop()
-    motorInner.run_angle(SPEED_TRACK_FAST, 1000)
+    motorOuter.run(SPEED_TRACK_SLOW)
+    motorInner.run_time(SPEED_TRACK_FAST, 3000)
     motorOuter.run(SPEED_TRACK)
-    wait(1000)
     motorInner.run_time(SPEED_TRACK_SLOW, 2000)
-    motorInner.run_angle(-SPEED_TRACK_FAST, ANGLE_RESET_INNER_TRACK)
+    motorInner.run_angle(SPEED_TRACK_FAST, -ANGLE_RESET_INNER_TRACK) # Reset
 
 # Uncomment lines below for testing:
 #reset()
@@ -86,4 +94,4 @@ reset()
 while True:
     leave()
     invite()
-    wait(10*1000)
+    wait(5000) # 5 seconds to shop
